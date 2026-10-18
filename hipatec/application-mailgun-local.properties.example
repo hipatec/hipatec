@@ -1,0 +1,12 @@
+# Copie para application-mailgun-local.properties (ignorado pelo Git).
+# Use o host da região exibida pelo Mailgun e um destinatário autorizado.
+hipatec.mail.provider=smtp
+spring.mail.host=smtp.mailgun.org
+spring.mail.port=587
+spring.mail.username=
+spring.mail.password=
+spring.mail.properties.mail.smtp.auth=true
+spring.mail.properties.mail.smtp.starttls.enable=true
+spring.mail.properties.mail.smtp.starttls.required=true
+hipatec.mail.from=
+hipatec.local.test-email=

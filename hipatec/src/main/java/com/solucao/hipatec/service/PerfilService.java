@@ -7,7 +7,6 @@ import com.solucao.hipatec.repository.PerfilRepository;
 import com.solucao.hipatec.dto.PerfilDTO;
 import com.solucao.hipatec.model.Estudante;
 import com.solucao.hipatec.model.Mentora;
-import com.solucao.hipatec.service.CloudinaryService;
 
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;

@@ -4,7 +4,6 @@ import com.solucao.hipatec.model.Perfil;
 import com.solucao.hipatec.service.PerfilService;
 import com.solucao.hipatec.dto.PerfilDTO;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -30,9 +29,6 @@ public class PerfilController {
     public Perfil salvar(@RequestBody Perfil perfil) {
         return service.salvar(perfil);
     }
-
-    @Autowired
-    private PerfilService perfilService;
 
     @GetMapping("/{role}/{id}")
     public PerfilDTO getPerfil(

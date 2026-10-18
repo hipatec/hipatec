@@ -17,11 +17,10 @@ public class FirebaseConfig {
     @PostConstruct
     public void init() throws IOException {
 
-FileInputStream serviceAccount =
-    new FileInputStream(
-        "C:\\Users\\NathaliaV\\Downloads\\hipatec-20e77-firebase-adminsdk-fbsvc-54b01d26c1.json"
-    );
-        FirebaseOptions options = new FirebaseOptions.Builder()
+        FileInputStream serviceAccount = new FileInputStream(
+                "C:\\Users\\NathaliaV\\Downloads\\hipatec-20e77-firebase-adminsdk-fbsvc-54b01d26c1.json"
+        );
+        FirebaseOptions options = FirebaseOptions.builder()
                 .setCredentials(GoogleCredentials.fromStream(serviceAccount))
                 .setDatabaseUrl("https://hipatec-20e77-default-rtdb.firebaseio.com")
                 .build();

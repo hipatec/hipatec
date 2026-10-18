@@ -1,6 +1,7 @@
 package com.solucao.hipatec.model;
 
 import java.time.LocalDate;
+import com.fasterxml.jackson.annotation.JsonProperty;
 
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -29,6 +30,7 @@ public class Estudante {
 
     private String email;
 
+    @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
     private String senha;
 
     private LocalDate dataNascimento;
