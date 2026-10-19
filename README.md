@@ -1,5 +1,7 @@
 # Hipatec — backend
 
+**Sprint 2:** [contrato de sessão, migração e aprovação de mentoras](docs/SPRINT2.md). Backend e frontend devem ser atualizados juntos.
+
 API em **Java 17 e Spring Boot 4.0.6**, com Gradle Wrapper 9.4.1. Repositório de origem: [hipatec/hipatec](https://github.com/hipatec/hipatec). Base original `27db9e96590c757464e916ebbabc977e9400e4dd`, com recuperação de senha adicionada nesta branch.
 
 O projeto Gradle está na subpasta **`hipatec/`**. O frontend com integração existente é [hipatec-app](https://github.com/hipatec/hipatec-app), em Angular/Ionic. Os dois projetos são executados separadamente: frontend normalmente na porta 8100 e API na porta 8080.
@@ -71,7 +73,7 @@ bash gradlew test
 bash gradlew bootJar
 ```
 
-O JAR é gerado em `hipatec/build/libs/`, considerando a raiz do repositório. O teste original `HipatecApplicationTests` ainda depende do ambiente completo de banco/Firebase. Os testes novos de recuperação usam H2 isolado e não carregam Firebase, Cloudinary nem as credenciais do arquivo principal. Foram executados com JDK 17; não comprovam a integração com o SQL Server da equipe.
+O JAR é gerado em `hipatec/build/libs/`, considerando a raiz do repositório. O teste de contexto usa H2 e substitutos dos serviços externos; não depende de credenciais locais. Os testes novos de recuperação usam H2 isolado e não carregam Firebase, Cloudinary nem as credenciais do arquivo principal. Foram executados com JDK 17; não comprovam a integração com o SQL Server da equipe.
 
 ## Endpoints presentes
 
@@ -80,13 +82,13 @@ Caminhos relativos à URL da API. Esta tabela descreve o código, não certifica
 | Métodos e caminhos | Finalidade |
 | --- | --- |
 | `GET /` | Mensagem de funcionamento |
-| `GET /estudantes`, `GET /estudantes/{id}`, `POST /estudantes` | Consulta e cadastro de estudantes |
-| `POST /estudantes/login` | Login por `email` e `senha` em parâmetros; retorna ID inteiro |
-| `GET /mentoras`, `GET /mentoras/{id}`, `POST /mentoras` | Consulta e cadastro de mentoras |
-| `POST /mentoras/login` | Login por `email` e `senha` em parâmetros; retorna ID inteiro |
+| `POST /estudantes` | Cadastro público com CSRF; listagem e consulta direta de contas bloqueadas |
+| `POST /auth/login` | Login por JSON, sessão HttpOnly e resposta `{id, role}` |
+| `POST /mentoras` | Cadastro pendente de aprovação; listagem e consulta direta de contas bloqueadas |
+| `GET /auth/session`, `GET /auth/csrf`, `POST /auth/logout` | Consulta de sessão, proteção CSRF e logout |
 | `POST /auth/recuperacao-senha` | Solicita link por e-mail; corpo JSON apenas com `email`; retorna 202 sem informar existência da conta |
 | `POST /auth/redefinir-senha` | Troca senha com token de uso único; corpo JSON com `token` e `senha`; retorna 204 |
-| `GET /perfil`, `POST /perfil` | Consulta e criação de perfil |
+| `GET /perfil` | Leitura pública para autoras do feed; criação ocorre junto com o cadastro |
 | `GET /perfil/{role}/{id}` | Perfil, com `role` esperado como `estudantes` ou `mentoras` |
 | `PUT /perfil/{role}/{id}` | Edição por parâmetros `nome`, `usuario`, `biografia` e arquivos opcionais `pfp`, `background` |
 | `GET /mentorias`, `POST /mentorias` | Listagem e criação iniciais |
@@ -96,7 +98,7 @@ Caminhos relativos à URL da API. Esta tabela descreve o código, não certifica
 | `POST /posts/{id}/comment` | Comentário com corpo `ComentarioDTO` |
 | `POST /posts/{id}/repost` | Repost, parâmetro `usuarioId` |
 
-Os controllers de estudantes, mentoras, perfil e mentorias liberam CORS para **`http://localhost:8100`**. Posts usam `*`. Execute o `hipatec-app` com `npm start -- --port 8100` para corresponder à origem configurada. CORS não substitui autorização.
+O CORS é centralizado, aceita credenciais apenas da origem `HIPATEC_FRONTEND_ORIGIN` (padrão **`http://localhost:8100`**) e não usa `*`. Execute o `hipatec-app` com `npm start -- --port 8100` para corresponder à origem configurada. CORS não substitui autorização.
 
 ## Recuperação de senha — teste local
 
@@ -235,15 +237,15 @@ O teste com Mailpit usa H2 descartável e destinatário fictício; seu link não
 | `src/test/java/com/solucao/hipatec/RecuperacaoSenhaTests.java` | Casos de segurança, concorrência, login, HTTP e SMTP local opcional |
 | `README.md` | Contrato, configuração, testes e limites conhecidos |
 
-Os caminhos de classes acima são relativos a `hipatec/src/main/java/com/solucao/hipatec/`. **A recuperação não cria sessões autenticadas nem implementa revogação das sessões existentes:** o projeto ainda usa IDs no navegador e `permitAll()`, conforme as limitações abaixo.
+Os caminhos de classes acima são relativos a `hipatec/src/main/java/com/solucao/hipatec/`. **A recuperação não autentica automaticamente:** a nova sessão é criada no login; a troca de senha revoga sessões anteriores na próxima requisição.
 
 Referências técnicas: [recuperação de senha — OWASP](https://cheatsheetseries.owasp.org/cheatsheets/Forgot_Password_Cheat_Sheet.html), [envio de e-mail — Spring Boot](https://docs.spring.io/spring-boot/reference/io/email.html) e [armazenamento de senhas — Spring Security](https://docs.spring.io/spring-security/reference/features/authentication/password-storage.html).
 
 ## Limitações que afetam o piloto
 
-- `SecurityConfig` usa `permitAll()` e desativa CSRF. Não há verificação de sessão/token ou aprovação administrativa implementada nessa configuração. O ID retornado pelo login não é um token de autenticação.
-- O campo `senha` agora aceita escrita, mas não é serializado nas respostas de estudante/mentora. O cadastro legado ainda salva a senha como recebida; a adoção de hash em todo o cadastro e a migração das contas antigas continuam pendentes.
-- Login de contas legadas depende de procedimentos ausentes do repositório. Após a recuperação, o hash `{bcrypt}` é conferido no Java, sem passar a nova senha ao procedimento. O contrato legado de login ainda recebe credenciais em parâmetros da URL e precisa ser migrado para corpo de requisição na revisão da autenticação.
+- Sessões e aprovação são verificadas pelo servidor; a aprovação é manual via acesso restrito ao banco. Aplicar a migração e revisar as contas existentes antes de publicar.
+- Senha não é serializada. Cadastros novos usam BCrypt; contas legadas são migradas após login validado ou recuperação de senha.
+- Login de contas legadas depende de procedimentos ausentes do repositório. Após a recuperação, o hash `{bcrypt}` é conferido no Java, sem passar a nova senha ao procedimento. O frontend usa `/auth/login` com credenciais no corpo JSON; os antigos endpoints por URL foram removidos.
 - A mentoria possui título, descrição, progresso e ID de mentora; ainda não modela agenda, vagas, inscrições, histórico e gravação. O campo atual `progresso` pertence à mentoria e não representa conclusão individual de uma estudante.
 - Operações de escrita no Firebase usam chamadas assíncronas sem aguardar confirmação. Um HTTP de sucesso atual não é evidência suficiente da persistência; verifique também o armazenamento em testes de integração.
 - Não há implementação de denúncias e remoção administrativa nos controllers examinados.
