@@ -52,6 +52,8 @@ public class PerfilService {
 
     public PerfilDTO buscarPerfil(String role, Integer id) {
 
+        if (!"estudantes".equals(role) && !"mentoras".equals(role))
+            throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.BAD_REQUEST);
         Perfil perfil;
         PerfilDTO dto = new PerfilDTO();
 
@@ -87,6 +89,7 @@ public class PerfilService {
         return dto;
     }
 
+    @jakarta.transaction.Transactional
     public PerfilDTO atualizarPerfil(
             String role,
             Integer id,
@@ -97,6 +100,8 @@ public class PerfilService {
             MultipartFile background
         ) {
 
+        if (!"estudantes".equals(role) && !"mentoras".equals(role))
+            throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.BAD_REQUEST);
         Perfil perfil;
 
         if ("estudantes".equals(role)) {
@@ -122,6 +127,9 @@ public class PerfilService {
             mentoraRepository.save(mentora);
         }
 
+        if (nome == null || nome.isBlank() || nome.length() > 100 || usuario == null || usuario.isBlank()
+                || usuario.length() > 100 || biografia == null || biografia.length() > 255)
+            throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.BAD_REQUEST, "Dados de perfil inválidos.");
         perfil.setUsuario(usuario);
         perfil.setBiografia(biografia);
 
