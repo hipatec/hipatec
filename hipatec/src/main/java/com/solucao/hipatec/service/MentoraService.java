@@ -44,8 +44,12 @@ public class MentoraService {
      @PersistenceContext
     private EntityManager entityManager;
 
+    @Transactional
     public Integer login(String email, String senha) {
+        if (email == null || senha == null || senha.isBlank() || senha.getBytes(StandardCharsets.UTF_8).length > 72)
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "E-mail ou senha inválidos.");
         var contas = repository.findByEmailIgnoreCase(email.trim());
+        if (contas.size() != 1) throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "E-mail ou senha inválidos.");
         if (contas.stream().anyMatch(conta -> conta.getSenha() != null && conta.getSenha().startsWith("{bcrypt}"))) {
             if (contas.size() != 1 || senha.getBytes(StandardCharsets.UTF_8).length > 72
                     || !passwordEncoder.matches(senha, contas.get(0).getSenha().substring(8))) {
@@ -76,7 +80,12 @@ public class MentoraService {
 
         Object resultado = query.getSingleResult();
 
-        return ((Number) resultado).intValue();
+        if (!(resultado instanceof Number) || ((Number) resultado).intValue() != contas.get(0).getId())
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "E-mail ou senha inválidos.");
+        var conta = contas.get(0);
+        conta.setSenha("{bcrypt}" + passwordEncoder.encode(senha));
+        repository.save(conta);
+        return conta.getId();
     }
 
     @Autowired
@@ -87,6 +96,20 @@ public class MentoraService {
 
     @Transactional
     public Mentora salvar(Mentora mentora) {
+        if (mentora.getId() != null || mentora.getNome() == null || mentora.getNome().isBlank()
+                || mentora.getUsuario() == null || mentora.getUsuario().isBlank()
+                || mentora.getEmail() == null || !mentora.getEmail().matches("[^\\s@]+@[^\\s@]+\\.[^\\s@]+")
+                || mentora.getEmail().length() > 254 || mentora.getNome().length() > 100 || mentora.getUsuario().length() > 100
+                || mentora.getDataNascimento() == null || !mentora.getDataNascimento().isBefore(java.time.LocalDate.now())
+                || mentora.getSenha() == null || mentora.getSenha().isBlank() || mentora.getSenha().length() < 8
+                || mentora.getSenha().getBytes(StandardCharsets.UTF_8).length > 72)
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Dados de cadastro inválidos.");
+        mentora.setEmail(mentora.getEmail().trim().toLowerCase(java.util.Locale.ROOT));
+        if (!repository.findByEmailIgnoreCase(mentora.getEmail()).isEmpty())
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Cadastro não disponível para estes dados.");
+        mentora.setSenha("{bcrypt}" + passwordEncoder.encode(mentora.getSenha()));
+        mentora.setAprovada(false);
+
 
         System.out.println("Entrou no save");
 

@@ -29,7 +29,7 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 @EnableAutoConfiguration
 @EntityScan("com.solucao.hipatec.model")
 @EnableJpaRepositories("com.solucao.hipatec.repository")
-@Import({SecurityConfig.class, RecuperacaoSenhaConfig.class, EmailService.class,
+@Import({com.solucao.hipatec.controller.SessaoController.class, SecurityConfig.class, RecuperacaoSenhaConfig.class, EmailService.class,
         RecuperacaoSenhaService.class, RecuperacaoSenhaController.class,
         EstudanteService.class, EstudanteController.class, MentoraService.class, MentoraController.class})
 public class RecuperacaoLocalApplication {
@@ -53,6 +53,7 @@ public class RecuperacaoLocalApplication {
             mentora.setNome("Mentora de teste");
             mentora.setEmail("mentora@example.test");
             mentora.setSenha(senha);
+            mentora.setAprovada(true);
             mentoras.save(mentora);
             if (!emailTeste.isBlank()
                     && !emailTeste.equalsIgnoreCase("estudante@example.test")

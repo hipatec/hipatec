@@ -43,8 +43,12 @@ public class EstudanteService {
     @PersistenceContext
     private EntityManager entityManager;
 
+    @Transactional
     public Integer login(String email, String senha) {
+        if (email == null || senha == null || senha.isBlank() || senha.getBytes(StandardCharsets.UTF_8).length > 72)
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "E-mail ou senha inválidos.");
         var contas = repository.findByEmailIgnoreCase(email.trim());
+        if (contas.size() != 1) throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "E-mail ou senha inválidos.");
         if (contas.stream().anyMatch(conta -> conta.getSenha() != null && conta.getSenha().startsWith("{bcrypt}"))) {
             if (contas.size() != 1 || senha.getBytes(StandardCharsets.UTF_8).length > 72
                     || !passwordEncoder.matches(senha, contas.get(0).getSenha().substring(8))) {
@@ -73,7 +77,12 @@ public class EstudanteService {
 
         Object resultado = query.getSingleResult();
 
-        return ((Number) resultado).intValue();
+        if (!(resultado instanceof Number) || ((Number) resultado).intValue() != contas.get(0).getId())
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "E-mail ou senha inválidos.");
+        var conta = contas.get(0);
+        conta.setSenha("{bcrypt}" + passwordEncoder.encode(senha));
+        repository.save(conta);
+        return conta.getId();
     }
 
     @Autowired
@@ -84,6 +93,19 @@ public class EstudanteService {
 
     @Transactional
     public Estudante salvar(Estudante estudante) {
+        if (estudante.getId() != null || estudante.getNome() == null || estudante.getNome().isBlank()
+                || estudante.getUsuario() == null || estudante.getUsuario().isBlank()
+                || estudante.getEmail() == null || !estudante.getEmail().matches("[^\\s@]+@[^\\s@]+\\.[^\\s@]+")
+                || estudante.getEmail().length() > 254 || estudante.getNome().length() > 100 || estudante.getUsuario().length() > 100
+                || estudante.getDataNascimento() == null || !estudante.getDataNascimento().isBefore(java.time.LocalDate.now())
+                || estudante.getSenha() == null || estudante.getSenha().isBlank() || estudante.getSenha().length() < 8
+                || estudante.getSenha().getBytes(StandardCharsets.UTF_8).length > 72)
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Dados de cadastro inválidos.");
+        estudante.setEmail(estudante.getEmail().trim().toLowerCase(java.util.Locale.ROOT));
+        if (!repository.findByEmailIgnoreCase(estudante.getEmail()).isEmpty())
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Cadastro não disponível para estes dados.");
+        estudante.setSenha("{bcrypt}" + passwordEncoder.encode(estudante.getSenha()));
+
 
         System.out.println("Entrou no save");
 

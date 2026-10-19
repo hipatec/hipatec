@@ -19,7 +19,6 @@ import org.springframework.web.server.ResponseStatusException;
 
 @RestController
 @RequestMapping("/auth")
-@CrossOrigin(origins = "${hipatec.frontend-origin:http://localhost:8100}")
 public class RecuperacaoSenhaController {
     private final RecuperacaoSenhaService service;
     // ponytail: limite local a uma instância; usar limite compartilhado no proxy ao escalar a API.
