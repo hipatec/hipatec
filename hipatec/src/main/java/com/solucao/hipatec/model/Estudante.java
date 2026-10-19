@@ -28,6 +28,7 @@ public class Estudante {
 
     private String nome;
 
+    @jakarta.persistence.Column(unique = true)
     private String email;
 
     @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
