@@ -24,6 +24,8 @@ import org.springframework.context.annotation.Import;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 
+import java.time.LocalDate;
+
 /** Ambiente descartável para testar o fluxo real no navegador. Não entra no JAR de produção. */
 @Configuration(proxyBeanMethods = false)
 @EnableAutoConfiguration
@@ -48,11 +50,13 @@ public class RecuperacaoLocalApplication {
             estudante.setNome("Estudante de teste");
             estudante.setEmail("estudante@example.test");
             estudante.setSenha(senha);
+            estudante.setDataNascimento(LocalDate.of(1998, 1, 15));
             estudantes.save(estudante);
             var mentora = new Mentora();
             mentora.setNome("Mentora de teste");
             mentora.setEmail("mentora@example.test");
             mentora.setSenha(senha);
+            mentora.setDataNascimento(LocalDate.of(1990, 6, 22));
             mentoras.save(mentora);
             if (!emailTeste.isBlank()
                     && !emailTeste.equalsIgnoreCase("estudante@example.test")
@@ -61,6 +65,7 @@ public class RecuperacaoLocalApplication {
                 contaReal.setNome("Teste de entrega real");
                 contaReal.setEmail(emailTeste.trim());
                 contaReal.setSenha(senha);
+                contaReal.setDataNascimento(LocalDate.of(1995, 12, 1));
                 estudantes.save(contaReal);
             }
         };
