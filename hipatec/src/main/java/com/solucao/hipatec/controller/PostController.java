@@ -24,16 +24,18 @@ import lombok.RequiredArgsConstructor;
 @RestController
 @RequestMapping("/posts")
 @RequiredArgsConstructor
-@CrossOrigin(origins = "*")
 public class PostController {
 
     private final PostService service;
+    private final com.solucao.hipatec.config.Acesso acesso;
 
     @PostMapping
     public ResponseEntity<Void> criar(
             @RequestBody Post post) {
 
-        System.out.println(post);
+        var perfil = acesso.perfil();
+        post.setAutorId(perfil.getId());
+        post.setAutorFoto(perfil.getPfp());
 
         service.criar(post);
 
@@ -62,7 +64,7 @@ public class PostController {
             @PathVariable String id,
             @RequestParam Integer usuarioId) {
 
-        service.curtir(id, usuarioId);
+        service.curtir(id, acesso.perfil().getId());
 
         return ResponseEntity.ok().build();
     }
@@ -72,7 +74,7 @@ public class PostController {
             @PathVariable String id,
             @RequestParam Integer usuarioId) {
 
-        service.descurtir(id, usuarioId);
+        service.descurtir(id, acesso.perfil().getId());
 
         return ResponseEntity.ok().build();
     }
@@ -84,9 +86,10 @@ public class PostController {
 
         Comentario comentario = new Comentario();
 
-        comentario.setAutorId(dto.getUsuarioId());
-        comentario.setAutorNome(dto.getAutorNome());
-        comentario.setAutorFoto(dto.getAutorFoto());
+        var perfil = acesso.perfil();
+        comentario.setAutorId(perfil.getId());
+        comentario.setAutorNome(perfil.getUsuario());
+        comentario.setAutorFoto(perfil.getPfp());
         comentario.setTexto(dto.getTexto());
 
         service.comentar(id, comentario);
@@ -99,7 +102,7 @@ public class PostController {
             @PathVariable String id,
             @RequestParam Integer usuarioId) {
 
-        service.repostar(id, usuarioId);
+        service.repostar(id, acesso.perfil().getId());
 
         return ResponseEntity.ok().build();
     }

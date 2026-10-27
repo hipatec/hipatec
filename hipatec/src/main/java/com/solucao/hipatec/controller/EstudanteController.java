@@ -7,7 +7,6 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
-@CrossOrigin(origins = "http://localhost:8100")
 @RestController
 @RequestMapping("/estudantes")
 public class EstudanteController {
@@ -37,11 +36,7 @@ public class EstudanteController {
         return service.salvar(estudante);
     }
 
-    @PostMapping("/login")
-    public Integer login(
-            @RequestParam String email,
-            @RequestParam String senha
-    ) {
-        return service.login(email, senha);
-    }
+    @ExceptionHandler(org.springframework.dao.DataIntegrityViolationException.class)
+    @ResponseStatus(org.springframework.http.HttpStatus.CONFLICT)
+    public void cadastroConflitante() {}
 }

@@ -67,3 +67,11 @@ tasks.register('recuperacaoLocal', JavaExec) {
 	classpath = sourceSets.test.runtimeClasspath
 	mainClass = 'com.solucao.hipatec.RecuperacaoLocalApplication'
 }
+
+tasks.register('sprint2Local', JavaExec) {
+    group = 'application'
+    description = 'Sessão e perfis reais com H2 descartável; serviços externos simulados.'
+    dependsOn testClasses
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'com.solucao.hipatec.Sprint2LocalApplication'
+}

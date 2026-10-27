@@ -25,8 +25,12 @@ public class Mentora {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
 
+    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
+    private Boolean aprovada = false;
+
     private String nome;
 
+    @jakarta.persistence.Column(unique = true)
     private String email;
 
     @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)

@@ -9,7 +9,6 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
-@CrossOrigin(origins = "http://localhost:8100")
 @RestController
 @RequestMapping("/perfil")
 public class PerfilController {
@@ -30,6 +29,7 @@ public class PerfilController {
         return service.salvar(perfil);
     }
 
+    @org.springframework.security.access.prepost.PreAuthorize("@acesso.proprio(#role, #id)")
     @GetMapping("/{role}/{id}")
     public PerfilDTO getPerfil(
             @PathVariable String role,
@@ -38,6 +38,7 @@ public class PerfilController {
         return service.buscarPerfil(role, id);
     }
 
+    @org.springframework.security.access.prepost.PreAuthorize("@acesso.proprio(#role, #id)")
     @PutMapping("/{role}/{id}")
     public PerfilDTO atualizarPerfil(
 

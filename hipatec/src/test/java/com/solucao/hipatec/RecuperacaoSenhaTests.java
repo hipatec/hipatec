@@ -220,14 +220,13 @@ class RecuperacaoSenhaTests {
 
     @Test
     void naoEscolheContaQuandoEmailEstaDuplicado() throws Exception {
-        var duplicada = new Estudante();
-        
-        duplicada.setEmail("estudante@example.test");
-        estudantes.save(duplicada);
-        service.solicitar("estudante@example.test");
-        
-        aguardarProcessamento();
-        verifyNoInteractions(mail);
+        var repository = mock(EstudanteRepository.class);
+        var conta = estudantes.findAll().get(0);
+        when(repository.findByEmailIgnoreCase("estudante@example.test")).thenReturn(List.of(conta, conta));
+        var email = mock(EmailService.class);
+        var local = new RecuperacaoSenhaService(repository, mentoras, tokens, email, encoder);
+        local.solicitar("estudante@example.test");
+        verifyNoInteractions(email);
         assertEquals(0, tokens.count());
     }
 
@@ -314,12 +313,12 @@ class RecuperacaoSenhaTests {
     }
 
     @Test
-    void mantemProcedimentoLegadoParaContasAindaNaoRecuperadas() {
+    void migraHashAposValidarCredencialNoProcedimentoLegado() {
         var em = mock(EntityManager.class);
         var query = mock(StoredProcedureQuery.class);
         
         when(em.createStoredProcedureQuery(any(String.class))).thenReturn(query);
-        when(query.getSingleResult()).thenReturn(17);
+        when(query.getSingleResult()).thenReturn(estudantes.findAll().get(0).getId(), mentoras.findAll().get(0).getId());
         
         var estudante = new EstudanteService(estudantes, encoder);
         var mentora = new MentoraService(mentoras, encoder);
@@ -327,9 +326,11 @@ class RecuperacaoSenhaTests {
         ReflectionTestUtils.setField(estudante, "entityManager", em);
         ReflectionTestUtils.setField(mentora, "entityManager", em);
         
-        assertEquals(17, estudante.login("estudante@example.test", "senha-legada"));
-        assertEquals(17, mentora.login("mentora@example.test", "senha-legada"));
+        assertEquals(estudantes.findAll().get(0).getId(), estudante.login("estudante@example.test", "senha-legada"));
+        assertEquals(mentoras.findAll().get(0).getId(), mentora.login("mentora@example.test", "senha-legada"));
         
+        assertTrue(estudantes.findAll().get(0).getSenha().startsWith("{bcrypt}"));
+        assertTrue(mentoras.findAll().get(0).getSenha().startsWith("{bcrypt}"));
         verify(em).createStoredProcedureQuery("login_estudante");
         verify(em).createStoredProcedureQuery("login_mentora");
     }

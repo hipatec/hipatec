@@ -7,7 +7,6 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
-@CrossOrigin(origins = "http://localhost:8100")
 @RestController
 @RequestMapping("/mentoras")
 public class MentoraController {
@@ -35,11 +34,7 @@ public class MentoraController {
     }
 
     // LOGIN
-    @PostMapping("/login")
-    public Integer login(
-            @RequestParam String email,
-            @RequestParam String senha
-    ) {
-        return service.login(email, senha);
-    }
+    @ExceptionHandler(org.springframework.dao.DataIntegrityViolationException.class)
+    @ResponseStatus(org.springframework.http.HttpStatus.CONFLICT)
+    public void cadastroConflitante() {}
 }
