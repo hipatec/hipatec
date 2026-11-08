@@ -18,149 +18,152 @@ import org.springframework.security.web.context.*;
 import org.springframework.security.web.authentication.logout.SecurityContextLogoutHandler;
 import org.springframework.web.cors.*;
 import org.springframework.web.filter.OncePerRequestFilter;
+import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
+import org.springframework.security.web.csrf.CsrfTokenRequestAttributeHandler;
+import org.springframework.security.web.csrf.CsrfTokenRepository;
 
 @Configuration
 @EnableMethodSecurity
 @Import(Acesso.class)
 public class SecurityConfig {
 
-    @Bean
-    SecurityContextRepository securityContextRepository() {
-        return new HttpSessionSecurityContextRepository();
-    }
+        @Bean
+        SecurityContextRepository securityContextRepository() {
+                return new HttpSessionSecurityContextRepository();
+        }
 
-    @Bean
-    SecurityFilterChain filterChain(
-            HttpSecurity http,
-            Acesso acesso,
-            SecurityContextRepository repository,
-            @Value("${hipatec.frontend-origin:http://localhost:8100}") String origin
-    ) throws Exception {
+        @Bean
+        CsrfTokenRepository csrfTokenRepository() {
+                return CookieCsrfTokenRepository.withHttpOnlyFalse();
+        }
 
-        var cors = new CorsConfiguration();
+        @Bean
+        SecurityFilterChain filterChain(
+                        HttpSecurity http,
+                        Acesso acesso,
+                        SecurityContextRepository repository,
+                        CsrfTokenRepository csrfTokenRepository,
+                        @Value("${hipatec.frontend-origin:http://localhost:8100}") String origin) throws Exception {
 
-        cors.setAllowedOrigins(List.of(origin));
-        cors.setAllowedMethods(List.of(
-                "GET", "POST", "PUT", "DELETE", "OPTIONS"
-        ));
-        cors.setAllowedHeaders(List.of(
-                "Content-Type", "X-CSRF-TOKEN"
-        ));
-        cors.setAllowCredentials(true);
+                var cors = new CorsConfiguration();
 
-        var source = new UrlBasedCorsConfigurationSource();
-        source.registerCorsConfiguration("/**", cors);
+                cors.setAllowedOrigins(List.of(origin));
+                cors.setAllowedMethods(List.of(
+                                "GET", "POST", "PUT", "DELETE", "OPTIONS"));
+                cors.setAllowedHeaders(List.of(
+                                "Content-Type",
+                                "X-CSRF-TOKEN",
+                                "X-XSRF-TOKEN"));
+                cors.setAllowCredentials(true);
 
-        http
-            .cors(c -> c.configurationSource(source))
+                var source = new UrlBasedCorsConfigurationSource();
+                source.registerCorsConfiguration("/**", cors);
 
-            .securityContext(c ->
-                c.securityContextRepository(repository)
-            )
+                http
+                                .cors(c -> c.configurationSource(source))
 
-            .authorizeHttpRequests(auth -> auth
+                                .securityContext(c -> c.securityContextRepository(repository))
 
-                .dispatcherTypeMatchers(
-                    jakarta.servlet.DispatcherType.ERROR
-                ).permitAll()
+                                .csrf(csrf -> csrf
+                                                .csrfTokenRepository(csrfTokenRepository)
+                                                .csrfTokenRequestHandler(
+                                                                new CsrfTokenRequestAttributeHandler()))
 
-                // Página inicial da API
-                .requestMatchers(HttpMethod.GET, "/").permitAll()
+                                .authorizeHttpRequests(auth -> auth
 
-                // Rotas públicas GET
-                .requestMatchers(
-                    HttpMethod.GET,
-                    "/auth/csrf",
-                    "/posts",
-                    "/posts/autor/*",
-                    "/perfil"
-                ).permitAll()
+                                                .dispatcherTypeMatchers(
+                                                                jakarta.servlet.DispatcherType.ERROR)
+                                                .permitAll()
 
-                // Rotas públicas POST
-                .requestMatchers(
-                    HttpMethod.POST,
-                    "/auth/login",
-                    "/auth/recuperacao-senha",
-                    "/auth/redefinir-senha",
-                    "/estudantes",
-                    "/mentoras"
-                ).permitAll()
+                                                // Página inicial da API
+                                                .requestMatchers(HttpMethod.GET, "/").permitAll()
 
-                // Rotas que exigem autenticação
-                .requestMatchers(
-                    "/auth/session",
-                    "/perfil/estudantes/*",
-                    "/perfil/mentoras/*"
-                ).authenticated()
+                                                // Rotas públicas GET
+                                                .requestMatchers(
+                                                                HttpMethod.GET,
+                                                                "/auth/csrf",
+                                                                "/posts",
+                                                                "/posts/autor/*",
+                                                                "/perfil")
+                                                .permitAll()
 
-                .requestMatchers(
-                    HttpMethod.GET,
-                    "/mentorias"
-                ).authenticated()
+                                                // Rotas públicas POST
+                                                .requestMatchers(
+                                                                HttpMethod.POST,
+                                                                "/auth/login",
+                                                                "/auth/recuperacao-senha",
+                                                                "/auth/redefinir-senha",
+                                                                "/estudantes",
+                                                                "/mentoras")
+                                                .permitAll()
 
-                // Apenas mentoras podem criar mentorias
-                .requestMatchers(
-                    HttpMethod.POST,
-                    "/mentorias"
-                ).hasRole("MENTORA")
+                                                // Rotas que exigem autenticação
+                                                .requestMatchers(
+                                                                "/auth/session",
+                                                                "/perfil/estudantes/*",
+                                                                "/perfil/mentoras/*")
+                                                .authenticated()
 
-                // Demais operações de publicações exigem login
-                .requestMatchers("/posts/**").authenticated()
+                                                .requestMatchers(
+                                                                HttpMethod.GET,
+                                                                "/mentorias")
+                                                .authenticated()
 
-                // Bloqueia qualquer rota não declarada
-                .anyRequest().denyAll()
-            )
+                                                // Apenas mentoras podem criar mentorias
+                                                .requestMatchers(
+                                                                HttpMethod.POST,
+                                                                "/mentorias")
+                                                .hasRole("MENTORA")
 
-            .exceptionHandling(e -> e
-                .authenticationEntryPoint((req, res, ex) ->
-                    res.setStatus(HttpServletResponse.SC_UNAUTHORIZED)
-                )
-                .accessDeniedHandler((req, res, ex) ->
-                    res.setStatus(HttpServletResponse.SC_FORBIDDEN)
-                )
-            )
+                                                // Demais operações de publicações exigem login
+                                                .requestMatchers("/posts/**").authenticated()
 
-            .logout(l -> l
-                .logoutUrl("/auth/logout")
-                .deleteCookies("JSESSIONID")
-                .logoutSuccessHandler((req, res, auth) ->
-                    res.setStatus(HttpServletResponse.SC_NO_CONTENT)
-                )
-            )
+                                                // Bloqueia qualquer rota não declarada
+                                                .anyRequest().denyAll())
 
-            // Validação da sessão do usuário
-            .addFilterAfter(new OncePerRequestFilter() {
+                                .exceptionHandling(e -> e
+                                                .authenticationEntryPoint((req, res, ex) -> res
+                                                                .setStatus(HttpServletResponse.SC_UNAUTHORIZED))
+                                                .accessDeniedHandler((req, res, ex) -> res
+                                                                .setStatus(HttpServletResponse.SC_FORBIDDEN)))
 
-                @Override
-                protected void doFilterInternal(
-                        HttpServletRequest request,
-                        HttpServletResponse response,
-                        FilterChain chain
-                ) throws ServletException, IOException {
+                                .logout(l -> l
+                                                .logoutUrl("/auth/logout")
+                                                .deleteCookies("JSESSIONID")
+                                                .logoutSuccessHandler((req, res, auth) -> res
+                                                                .setStatus(HttpServletResponse.SC_NO_CONTENT)))
 
-                    var auth = SecurityContextHolder
-                            .getContext()
-                            .getAuthentication();
+                                // Validação da sessão do usuário
+                                .addFilterAfter(new OncePerRequestFilter() {
 
-                    if (auth != null
-                            && auth.getPrincipal() instanceof UsuarioSessao usuario
-                            && !acesso.valida(usuario)) {
+                                        @Override
+                                        protected void doFilterInternal(
+                                                        HttpServletRequest request,
+                                                        HttpServletResponse response,
+                                                        FilterChain chain) throws ServletException, IOException {
 
-                        new SecurityContextLogoutHandler()
-                                .logout(request, response, auth);
+                                                var auth = SecurityContextHolder
+                                                                .getContext()
+                                                                .getAuthentication();
 
-                        response.setStatus(
-                            HttpServletResponse.SC_UNAUTHORIZED
-                        );
+                                                if (auth != null
+                                                                && auth.getPrincipal() instanceof UsuarioSessao usuario
+                                                                && !acesso.valida(usuario)) {
 
-                        return;
-                    }
+                                                        new SecurityContextLogoutHandler()
+                                                                        .logout(request, response, auth);
 
-                    chain.doFilter(request, response);
-                }
+                                                        response.setStatus(
+                                                                        HttpServletResponse.SC_UNAUTHORIZED);
 
-            }, SecurityContextHolderFilter.class);
+                                                        return;
+                                                }
 
-        return http.build();
-    }
+                                                chain.doFilter(request, response);
+                                        }
+
+                                }, SecurityContextHolderFilter.class);
+
+                return http.build();
+        }
 }

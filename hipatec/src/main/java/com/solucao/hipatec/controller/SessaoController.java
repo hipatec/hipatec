@@ -16,6 +16,7 @@ import org.springframework.security.web.csrf.CsrfToken;
 import org.springframework.security.web.csrf.HttpSessionCsrfTokenRepository;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
+import org.springframework.security.web.csrf.CsrfTokenRepository;
 
 @RestController
 @RequestMapping("/auth")
@@ -24,16 +25,32 @@ public class SessaoController {
     private final MentoraService mentoras;
     private final SecurityContextRepository repository;
     private final Acesso acesso;
-    // shortcut: limite em uma instância; usar contador compartilhado ao escalar a API.
+    private final CsrfTokenRepository csrfTokenRepository;
+    // shortcut: limite em uma instância; usar contador compartilhado ao escalar a
+    // API.
     private final Map<String, Janela> tentativas = new LinkedHashMap<>();
-    private record Janela(Instant inicio, int quantidade) {}
-    public record Login(@Pattern(regexp="estudantes|mentoras") @NotNull String role,
-            @NotBlank @Email @Size(max=254) String email, @NotBlank @Size(max=72) String senha) {}
-    public record Conta(Integer id, String role) {}
 
-    public SessaoController(EstudanteService estudantes, MentoraService mentoras,
-            SecurityContextRepository repository, Acesso acesso) {
-        this.estudantes = estudantes; this.mentoras = mentoras; this.repository = repository; this.acesso = acesso;
+    private record Janela(Instant inicio, int quantidade) {
+    }
+
+    public record Login(@Pattern(regexp = "estudantes|mentoras") @NotNull String role,
+            @NotBlank @Email @Size(max = 254) String email, @NotBlank @Size(max = 72) String senha) {
+    }
+
+    public record Conta(Integer id, String role) {
+    }
+
+    public SessaoController(
+            EstudanteService estudantes,
+            MentoraService mentoras,
+            SecurityContextRepository repository,
+            Acesso acesso,
+            CsrfTokenRepository csrfTokenRepository) {
+        this.estudantes = estudantes;
+        this.mentoras = mentoras;
+        this.repository = repository;
+        this.acesso = acesso;
+        this.csrfTokenRepository = csrfTokenRepository;
     }
 
     @ExceptionHandler(org.springframework.web.bind.MethodArgumentNotValidException.class)
@@ -57,7 +74,8 @@ public class SessaoController {
     public Conta login(@Valid @RequestBody Login dados, HttpServletRequest request, HttpServletResponse response) {
         limitar(request.getRemoteAddr());
         var anterior = request.getSession(false);
-        if (anterior != null) anterior.invalidate();
+        if (anterior != null)
+            anterior.invalidate();
         SecurityContextHolder.clearContext();
         Integer id;
         String hash;
@@ -73,12 +91,13 @@ public class SessaoController {
         }
         var usuario = new UsuarioSessao(id, dados.role(), hash);
         var auth = UsernamePasswordAuthenticationToken.authenticated(usuario, null,
-                List.of(new SimpleGrantedAuthority(dados.role().equals("mentoras") ? "ROLE_MENTORA" : "ROLE_ESTUDANTE")));
+                List.of(new SimpleGrantedAuthority(
+                        dados.role().equals("mentoras") ? "ROLE_MENTORA" : "ROLE_ESTUDANTE")));
         var context = SecurityContextHolder.createEmptyContext();
         context.setAuthentication(auth);
         SecurityContextHolder.setContext(context);
         repository.saveContext(context, request, response);
-        new HttpSessionCsrfTokenRepository().saveToken(null, request, response);
+        csrfTokenRepository.saveToken(null, request, response);
         return new Conta(id, dados.role());
     }
 
@@ -87,10 +106,12 @@ public class SessaoController {
         tentativas.values().removeIf(j -> j.inicio().plusSeconds(900).isBefore(agora));
         var janela = tentativas.get(ip);
         if (janela == null) {
-            if (tentativas.size() >= 10000) throw new ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS);
+            if (tentativas.size() >= 10000)
+                throw new ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS);
             janela = new Janela(agora, 0);
         }
-        if (janela.quantidade() >= 20) throw new ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS);
+        if (janela.quantidade() >= 20)
+            throw new ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS);
         tentativas.put(ip, new Janela(janela.inicio(), janela.quantidade() + 1));
     }
 }
