@@ -58,7 +58,7 @@ class RecuperacaoSenhaTests {
     @Configuration(proxyBeanMethods = false)
     @EnableAutoConfiguration
     @EntityScan("com.solucao.hipatec.model")
-    @EnableJpaRepositories("com.solucao.hipatec.repository")
+    // @EnableJpaRepositories("com.solucao.hipatec.repository")
     @Import({RecuperacaoSenhaConfig.class, RecuperacaoSenhaService.class, EmailService.class,
             EstudanteService.class, MentoraService.class})
     static class Config {

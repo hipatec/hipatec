@@ -1,23 +1,32 @@
+
 package com.solucao.hipatec.config;
 
+import java.io.ByteArrayInputStream;
 import java.io.FileInputStream;
-import java.io.IOException;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Path;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
 
 import com.google.auth.oauth2.GoogleCredentials;
 import com.google.firebase.FirebaseApp;
 import com.google.firebase.FirebaseOptions;
 
-import org.springframework.context.annotation.Configuration;
-
 import jakarta.annotation.PostConstruct;
-
-import java.io.ByteArrayInputStream;
-import java.nio.charset.StandardCharsets;
 
 @Configuration
 public class FirebaseConfig {
+
+    @Value("${FIREBASE_CREDENTIALS_JSON:}")
+    private String credentialsJson;
+
+    @Value("${FIREBASE_CREDENTIALS_PATH:}")
+    private String credentialsPath;
+
+    @Value("${FIREBASE_DATABASE_URL:}")
+    private String databaseUrl;
 
     @PostConstruct
     public void initialize() {
@@ -26,33 +35,54 @@ public class FirebaseConfig {
                 return;
             }
 
-            String credentialsJson =
-                    System.getenv("FIREBASE_CREDENTIALS_JSON");
-
-            String databaseUrl =
-                    System.getenv("FIREBASE_DATABASE_URL");
-
-            if (credentialsJson == null || credentialsJson.isBlank()) {
-                throw new IllegalStateException(
-                        "FIREBASE_CREDENTIALS_JSON não configurada."
-                );
-            }
-
             if (databaseUrl == null || databaseUrl.isBlank()) {
                 throw new IllegalStateException(
                         "FIREBASE_DATABASE_URL não configurada."
                 );
             }
 
-            ByteArrayInputStream credentialsStream =
-                    new ByteArrayInputStream(
-                            credentialsJson.getBytes(StandardCharsets.UTF_8)
-                    );
+            GoogleCredentials credentials;
+
+            if (credentialsJson != null && !credentialsJson.isBlank()) {
+
+                // PRODUÇÃO: utiliza o conteúdo JSON configurado no Railway
+                try (InputStream stream = new ByteArrayInputStream(
+                        credentialsJson.getBytes(StandardCharsets.UTF_8))) {
+
+                    credentials = GoogleCredentials.fromStream(stream);
+                }
+
+                System.out.println(
+                        "Firebase: utilizando credenciais JSON."
+                );
+
+            } else if (credentialsPath != null && !credentialsPath.isBlank()) {
+
+                // LOCAL: utiliza o caminho do arquivo JSON
+                Path path = Path.of(credentialsPath);
+
+                if (!path.isAbsolute()) {
+                    path = Path.of(System.getProperty("user.dir"))
+                            .resolve(path)
+                            .normalize();
+                }
+
+                try (InputStream stream = new FileInputStream(path.toFile())) {
+                    credentials = GoogleCredentials.fromStream(stream);
+                }
+
+                System.out.println(
+                        "Firebase: utilizando arquivo local de credenciais."
+                );
+
+            } else {
+                throw new IllegalStateException(
+                        "Configure FIREBASE_CREDENTIALS_JSON ou FIREBASE_CREDENTIALS_PATH."
+                );
+            }
 
             FirebaseOptions options = FirebaseOptions.builder()
-                    .setCredentials(
-                            GoogleCredentials.fromStream(credentialsStream)
-                    )
+                    .setCredentials(credentials)
                     .setDatabaseUrl(databaseUrl)
                     .build();
 
