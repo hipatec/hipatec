@@ -26,6 +26,8 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 
+import java.time.LocalDate;
+
 @SpringBootApplication
 @Import({
         SessaoController.class,
@@ -66,12 +68,12 @@ public class RecuperacaoLocalApplication {
             estudante.setEmail("estudante@example.test");
             estudante.setDataNascimento(LocalDate.of(2000, 1, 1));
             estudante.setSenha(senha);
+            estudante.setDataNascimento(LocalDate.of(1998, 1, 15));
             estudantes.save(estudante);
 
             var mentora = new Mentora();
             mentora.setNome("Mentora de teste");
             mentora.setEmail("mentora@example.test");
-            mentora.setDataNascimento(LocalDate.of(2000, 1, 1));
             mentora.setSenha(senha);
             mentora.setAprovada(true);
             mentoras.save(mentora);
