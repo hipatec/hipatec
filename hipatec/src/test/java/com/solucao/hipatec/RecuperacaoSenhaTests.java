@@ -27,6 +27,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
 import org.springframework.boot.persistence.autoconfigure.EntityScan;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
@@ -55,26 +56,39 @@ import org.springframework.web.server.ResponseStatusException;
         "logging.level.org.hibernate.SQL=OFF"
 })
 class RecuperacaoSenhaTests {
-    @Configuration(proxyBeanMethods = false)
+    @TestConfiguration(proxyBeanMethods = false)
     @EnableAutoConfiguration
     @EntityScan("com.solucao.hipatec.model")
     // @EnableJpaRepositories("com.solucao.hipatec.repository")
-    @Import({RecuperacaoSenhaConfig.class, RecuperacaoSenhaService.class, EmailService.class,
-            EstudanteService.class, MentoraService.class})
+    @Import({ RecuperacaoSenhaConfig.class, RecuperacaoSenhaService.class, EmailService.class,
+            EstudanteService.class, MentoraService.class })
     static class Config {
-        @Bean JavaMailSender mail() { return mock(JavaMailSender.class); }
+        @Bean
+        JavaMailSender mail() {
+            return mock(JavaMailSender.class);
+        }
     }
 
-    @Autowired RecuperacaoSenhaService service;
-    @Autowired RecuperacaoSenhaRepository tokens;
-    @Autowired EstudanteRepository estudantes;
-    @Autowired MentoraRepository mentoras;
-    @Autowired EstudanteService estudanteService;
-    @Autowired MentoraService mentoraService;
-    @Autowired JavaMailSender mail;
-    @Autowired BCryptPasswordEncoder encoder;
-    @Autowired PlatformTransactionManager transactionManager;
-    @Autowired ThreadPoolTaskExecutor recuperacaoSenhaExecutor;
+    @Autowired
+    RecuperacaoSenhaService service;
+    @Autowired
+    RecuperacaoSenhaRepository tokens;
+    @Autowired
+    EstudanteRepository estudantes;
+    @Autowired
+    MentoraRepository mentoras;
+    @Autowired
+    EstudanteService estudanteService;
+    @Autowired
+    MentoraService mentoraService;
+    @Autowired
+    JavaMailSender mail;
+    @Autowired
+    BCryptPasswordEncoder encoder;
+    @Autowired
+    PlatformTransactionManager transactionManager;
+    @Autowired
+    ThreadPoolTaskExecutor recuperacaoSenhaExecutor;
     private MockMvc mvc;
 
     @BeforeEach
@@ -84,9 +98,9 @@ class RecuperacaoSenhaTests {
         estudantes.deleteAll();
         mentoras.deleteAll();
         reset(mail);
-        
+
         mvc = MockMvcBuilders.standaloneSetup(new RecuperacaoSenhaController(service)).build();
-        
+
         var estudante = new Estudante();
         estudante.setNome("Estudante de teste");
         estudante.setEmail("estudante@example.test");
@@ -114,11 +128,11 @@ class RecuperacaoSenhaTests {
     private String solicitar(String email) throws Exception {
         service.solicitar(email);
         aguardarProcessamento();
-        
+
         var mensagem = ArgumentCaptor.forClass(SimpleMailMessage.class);
-        
+
         verify(mail, atLeastOnce()).send(mensagem.capture());
-        
+
         return mensagem.getValue().getText().split("#token=")[1].split("\\s")[0];
     }
 
@@ -128,9 +142,9 @@ class RecuperacaoSenhaTests {
         assertNotEquals(token, tokens.findAll().get(0).getTokenHash());
         assertEquals(64, tokens.findAll().get(0).getTokenHash().length());
         assertEquals("senha-legada", estudantes.findAll().get(0).getSenha());
-        
+
         service.redefinir(token, "NovaSenha123!");
-        
+
         var conta = estudantes.findAll().get(0);
         assertTrue(encoder.matches("NovaSenha123!", conta.getSenha().substring(8)));
         assertEquals(conta.getId(), estudanteService.login(conta.getEmail(), "NovaSenha123!"));
@@ -142,9 +156,9 @@ class RecuperacaoSenhaTests {
     @Test
     void redefineMentoraSemAlterarEstudante() throws Exception {
         String token = solicitar("mentora@example.test");
-        
+
         service.redefinir(token, "NovaSenha123!");
-        
+
         var conta = mentoras.findAll().get(0);
         assertEquals(conta.getId(), mentoraService.login(conta.getEmail(), "NovaSenha123!"));
         assertThrows(ResponseStatusException.class, () -> mentoraService.login(conta.getEmail(), "senha-legada"));
@@ -154,12 +168,12 @@ class RecuperacaoSenhaTests {
     @Test
     void rejeitaLinkExpiradoOuAleatorioSemAlterarSenha() throws Exception {
         String token = solicitar("estudante@example.test");
-        
+
         var recuperacao = tokens.findAll().get(0);
-        
+
         recuperacao.setExpiraEm(Instant.now().minusSeconds(1));
         tokens.save(recuperacao);
-        
+
         assertThrows(ResponseStatusException.class, () -> service.redefinir(token, "NovaSenha123!"));
         assertThrows(ResponseStatusException.class, () -> service.redefinir("z".repeat(43), "NovaSenha123!"));
         assertEquals("senha-legada", estudantes.findAll().get(0).getSenha());
@@ -168,38 +182,38 @@ class RecuperacaoSenhaTests {
     @Test
     void limitaReenvioESubstituiLinkAnterior() throws Exception {
         String anterior = solicitar("estudante@example.test");
-        
+
         service.solicitar("estudante@example.test");
-        
+
         aguardarProcessamento();
         verify(mail, times(1)).send(any(SimpleMailMessage.class));
-        
+
         var recuperacao = tokens.findAll().get(0);
-        
+
         recuperacao.setCriadoEm(Instant.now().minusSeconds(61));
         tokens.save(recuperacao);
-        
+
         String novo = solicitar("estudante@example.test");
-        
+
         assertNotEquals(anterior, novo);
         assertThrows(ResponseStatusException.class, () -> service.redefinir(anterior, "NovaSenha123!"));
-        
+
         service.redefinir(novo, "NovaSenha123!");
     }
 
     @Test
     void falhaNoEnvioPreservaLinkAnterior() throws Exception {
         String anterior = solicitar("estudante@example.test");
-        
+
         var recuperacao = tokens.findAll().get(0);
-        
+
         recuperacao.setCriadoEm(Instant.now().minusSeconds(61));
         tokens.save(recuperacao);
-        
+
         doThrow(new MailSendException("SMTP local indisponível")).when(mail).send(any(SimpleMailMessage.class));
-        
+
         service.solicitar("estudante@example.test");
-        
+
         aguardarProcessamento();
         // O aviso de confirmação também falhará; a senha ainda deve ser alterada.
         service.redefinir(anterior, "NovaSenha123!");
@@ -268,12 +282,12 @@ class RecuperacaoSenhaTests {
         mvc.perform(post("/auth/redefinir-senha").contentType("application/json")
                 .content("{\"token\":\"" + token + "\",\"senha\":\"curta\"}"))
                 .andExpect(status().is(422));
-        
+
         String corpo = "{\"token\":\"" + token + "\",\"senha\":\"NovaSenha123!\"}";
-        
+
         var resposta = mvc.perform(post("/auth/redefinir-senha").contentType("application/json").content(corpo))
                 .andExpect(status().isNoContent()).andReturn().getResponse();
-        
+
         assertEquals("", resposta.getContentAsString());
 
         mvc.perform(post("/auth/redefinir-senha").contentType("application/json").content(corpo))
@@ -283,11 +297,11 @@ class RecuperacaoSenhaTests {
     @Test
     void naoConsomeTokenQuandoSenhaNaoAtendeLimites() throws Exception {
         String token = solicitar("estudante@example.test");
-        
+
         for (String senha : List.of("curta", " ".repeat(8), "á".repeat(40))) {
             assertThrows(ResponseStatusException.class, () -> service.redefinir(token, senha));
         }
-        
+
         assertEquals(1, tokens.count());
         service.redefinir(token, "NovaSenha123!");
     }
@@ -295,40 +309,47 @@ class RecuperacaoSenhaTests {
     @Test
     void somenteUmaTrocaConcorrentePodeUsarOMesmoLink() throws Exception {
         String token = solicitar("estudante@example.test");
-        
+
         var inicio = new CountDownLatch(1);
         var executor = Executors.newFixedThreadPool(2);
-        
+
         try {
             var tarefa = (java.util.concurrent.Callable<Boolean>) () -> {
                 inicio.await();
-                try { service.redefinir(token, "NovaSenha123!"); return true; }
-                catch (ResponseStatusException error) { return false; }
+                try {
+                    service.redefinir(token, "NovaSenha123!");
+                    return true;
+                } catch (ResponseStatusException error) {
+                    return false;
+                }
             };
             var primeira = executor.submit(tarefa);
             var segunda = executor.submit(tarefa);
             inicio.countDown();
             assertNotEquals(primeira.get(10, TimeUnit.SECONDS), segunda.get(10, TimeUnit.SECONDS));
-        } finally { executor.shutdownNow(); }
+        } finally {
+            executor.shutdownNow();
+        }
     }
 
     @Test
     void migraHashAposValidarCredencialNoProcedimentoLegado() {
         var em = mock(EntityManager.class);
         var query = mock(StoredProcedureQuery.class);
-        
+
         when(em.createStoredProcedureQuery(any(String.class))).thenReturn(query);
-        when(query.getSingleResult()).thenReturn(estudantes.findAll().get(0).getId(), mentoras.findAll().get(0).getId());
-        
+        when(query.getSingleResult()).thenReturn(estudantes.findAll().get(0).getId(),
+                mentoras.findAll().get(0).getId());
+
         var estudante = new EstudanteService(estudantes, encoder);
         var mentora = new MentoraService(mentoras, encoder);
-        
+
         ReflectionTestUtils.setField(estudante, "entityManager", em);
         ReflectionTestUtils.setField(mentora, "entityManager", em);
-        
+
         assertEquals(estudantes.findAll().get(0).getId(), estudante.login("estudante@example.test", "senha-legada"));
         assertEquals(mentoras.findAll().get(0).getId(), mentora.login("mentora@example.test", "senha-legada"));
-        
+
         assertTrue(estudantes.findAll().get(0).getSenha().startsWith("{bcrypt}"));
         assertTrue(mentoras.findAll().get(0).getSenha().startsWith("{bcrypt}"));
         verify(em).createStoredProcedureQuery("login_estudante");
@@ -338,7 +359,7 @@ class RecuperacaoSenhaTests {
     @Test
     void respostasDeContasNaoExpoemSenha() throws Exception {
         var mapper = new tools.jackson.databind.ObjectMapper();
-        
+
         assertFalse(mapper.writeValueAsString(estudantes.findAll().get(0)).contains("senha"));
         assertFalse(mapper.writeValueAsString(mentoras.findAll().get(0)).contains("senha"));
     }
@@ -347,18 +368,18 @@ class RecuperacaoSenhaTests {
     @EnabledIfEnvironmentVariable(named = "HIPATEC_TEST_SMTP_PORT", matches = "[0-9]+")
     void enviaRecuperacaoParaCaixaSmtpLocal() {
         var smtp = new JavaMailSenderImpl();
-        
+
         smtp.setHost("127.0.0.1");
         smtp.setPort(Integer.parseInt(System.getenv("HIPATEC_TEST_SMTP_PORT")));
-        
+
         var email = new EmailService(smtp, org.springframework.web.client.RestClient.builder(), "smtp", "", "");
         var local = new RecuperacaoSenhaService(estudantes, mentoras, tokens, email, encoder);
-        
+
         ReflectionTestUtils.setField(local, "resetUrl", "http://localhost:8100/redefinir-senha");
         ReflectionTestUtils.setField(local, "remetente", "teste@hipatec.local");
-        
-        new TransactionTemplate(transactionManager).executeWithoutResult(status ->
-                local.solicitar("estudante@example.test"));
+
+        new TransactionTemplate(transactionManager)
+                .executeWithoutResult(status -> local.solicitar("estudante@example.test"));
         assertEquals(1, tokens.count());
     }
 }

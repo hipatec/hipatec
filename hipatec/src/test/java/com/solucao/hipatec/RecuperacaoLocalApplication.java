@@ -15,6 +15,7 @@ import com.solucao.hipatec.service.EmailService;
 import com.solucao.hipatec.service.EstudanteService;
 import com.solucao.hipatec.service.MentoraService;
 import com.solucao.hipatec.service.RecuperacaoSenhaService;
+import java.time.LocalDate;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.WebApplicationType;
@@ -27,64 +28,53 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 
 @SpringBootApplication
 @Import({
-    SessaoController.class,
-    SecurityConfig.class,
-    RecuperacaoSenhaConfig.class,
-    EmailService.class,
-    RecuperacaoSenhaService.class,
-    RecuperacaoSenhaController.class,
-    EstudanteService.class,
-    EstudanteController.class,
-    MentoraService.class,
-    MentoraController.class
+        SessaoController.class,
+        SecurityConfig.class,
+        RecuperacaoSenhaConfig.class,
+        EmailService.class,
+        RecuperacaoSenhaService.class,
+        RecuperacaoSenhaController.class,
+        EstudanteService.class,
+        EstudanteController.class,
+        MentoraService.class,
+        MentoraController.class
 })
 public class RecuperacaoLocalApplication {
 
     public static void main(String[] args) {
-        SpringApplication app =
-                new SpringApplication(RecuperacaoLocalApplication.class);
+        SpringApplication app = new SpringApplication(RecuperacaoLocalApplication.class);
 
         app.setWebApplicationType(WebApplicationType.SERVLET);
 
         app.run(
-            "--spring.profiles.active=local",
-            "--spring.config.additional-location=optional:classpath:/application-recuperacao-local.properties"
-        );
+                "--spring.profiles.active=local",
+                "--spring.config.additional-location=optional:classpath:/application-recuperacao-local.properties");
     }
 
     @Bean
+    @org.springframework.boot.autoconfigure.condition.ConditionalOnProperty(name = "hipatec.local.criar-contas-teste", havingValue = "true")
     ApplicationRunner contasLocais(
             EstudanteRepository estudantes,
             MentoraRepository mentoras,
             BCryptPasswordEncoder encoder,
-            @Value("${hipatec.local.test-email:}") String emailTeste
-    ) {
+            @Value("${hipatec.local.test-email:}") String emailTeste) {
         return args -> {
             String senha = "{bcrypt}" + encoder.encode("TesteLocal123!");
 
             var estudante = new Estudante();
             estudante.setNome("Estudante de teste");
             estudante.setEmail("estudante@example.test");
+            estudante.setDataNascimento(LocalDate.of(2000, 1, 1));
             estudante.setSenha(senha);
             estudantes.save(estudante);
 
             var mentora = new Mentora();
             mentora.setNome("Mentora de teste");
             mentora.setEmail("mentora@example.test");
+            mentora.setDataNascimento(LocalDate.of(2000, 1, 1));
             mentora.setSenha(senha);
             mentora.setAprovada(true);
             mentoras.save(mentora);
-
-            if (!emailTeste.isBlank()
-                    && !emailTeste.equalsIgnoreCase("estudante@example.test")
-                    && !emailTeste.equalsIgnoreCase("mentora@example.test")) {
-
-                var contaReal = new Estudante();
-                contaReal.setNome("Teste de entrega real");
-                contaReal.setEmail(emailTeste.trim());
-                contaReal.setSenha(senha);
-                estudantes.save(contaReal);
-            }
         };
     }
 }

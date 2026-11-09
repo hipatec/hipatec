@@ -18,7 +18,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
 import org.springframework.boot.persistence.autoconfigure.EntityScan;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.context.annotation.*;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Import;
+import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 import org.springframework.mock.web.MockHttpSession;
 import org.springframework.web.context.WebApplicationContext;
@@ -33,7 +35,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
     "spring.datasource.driver-class-name=org.h2.Driver", "spring.jpa.hibernate.ddl-auto=create-drop"
 })
 class SessaoTests {
-  @Configuration(proxyBeanMethods = false)
+  @TestConfiguration(proxyBeanMethods = false)
   @EnableAutoConfiguration
   @EntityScan("com.solucao.hipatec.model")
   // @EnableJpaRepositories("com.solucao.hipatec.repository")
@@ -48,7 +50,7 @@ class SessaoTests {
 
     // @Bean
     // com.cloudinary.Cloudinary cloudinaryClient() {
-    //   return mock(com.cloudinary.Cloudinary.class);
+    // return mock(com.cloudinary.Cloudinary.class);
     // }
 
     @Bean
