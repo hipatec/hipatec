@@ -19,16 +19,22 @@ import java.time.LocalDate;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.WebApplicationType;
-import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
+import org.springframework.boot.persistence.autoconfigure.EntityScan;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
+import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 
 import java.time.LocalDate;
 
-@SpringBootApplication
+@Configuration
+@EnableAutoConfiguration
+@EntityScan("com.solucao.hipatec.model")
+@EnableJpaRepositories("com.solucao.hipatec.repository")
 @Import({
         SessaoController.class,
         SecurityConfig.class,
@@ -70,6 +76,17 @@ public class RecuperacaoLocalApplication {
             estudante.setSenha(senha);
             estudante.setDataNascimento(LocalDate.of(1998, 1, 15));
             estudantes.save(estudante);
+
+            if (emailTeste != null
+                    && !emailTeste.isBlank()
+                    && !emailTeste.equalsIgnoreCase(estudante.getEmail())) {
+                var destinatario = new Estudante();
+                destinatario.setNome("Destinatário local");
+                destinatario.setEmail(emailTeste);
+                destinatario.setDataNascimento(LocalDate.of(1998, 1, 16));
+                destinatario.setSenha(senha);
+                estudantes.save(destinatario);
+            }
 
             var mentora = new Mentora();
             mentora.setNome("Mentora de teste");

@@ -11,19 +11,19 @@ O projeto Gradle está na subpasta **`hipatec/`**. O frontend com integração e
 | Tecnologia | Uso observado |
 | --- | --- |
 | Spring MVC | Controllers HTTP |
-| Spring Data JPA + SQL Server | Estudantes, mentoras, perfis e mentorias |
+| Spring Data JPA + PostgreSQL | Estudantes, mentoras, perfis, mentorias e onboarding |
 | Firebase Realtime Database | Posts, curtidas, comentários, reposts e referências de feed |
 | Cloudinary | Upload de fotos e capas de perfil |
-| Spring Security | Configuração atual permite todas as requisições |
+| Spring Security | Sessão HttpOnly, CSRF e regras de acesso por papel |
 | Springdoc | Dependência de documentação OpenAPI |
 
-H2 e Redis aparecem nas dependências, mas não há perfil H2 pronto para substituir SQL Server nem uso de Redis nos serviços examinados. Não são alternativas configuradas automaticamente.
+H2 aparece para testes locais descartáveis e Redis permanece disponível como dependência, mas não é necessário para iniciar o ambiente local principal.
 
 ## Pré-requisitos e pendências para executar
 
 1. Instalar **JDK 17**, selecionado pelo toolchain do build. Não é necessário instalar Gradle globalmente; o wrapper baixa a versão declarada. Precisa haver acesso à rede para obter as dependências.
-2. Disponibilizar um SQL Server de desenvolvimento e configurar URL JDBC, usuário e senha.
-3. Obter com a equipe os scripts do banco, especialmente os procedimentos **`login_estudante` e `login_mentora`**. Contas com senha legada ainda usam esses procedimentos; contas que redefiniram a senha usam BCrypt no Java. Os scripts dos procedimentos não estão versionados. `ddl-auto=update` não cria os procedimentos de login.
+2. Disponibilizar um PostgreSQL local ou uma branch de desenvolvimento do Neon e configurar URL JDBC, usuário e senha.
+3. Usar uma base de desenvolvimento separada da produção. O perfil local descartável continua disponível para validar sessão, cadastro e perfis sem depender de serviços externos.
 4. Disponibilizar uma conta de serviço Firebase e o Realtime Database de desenvolvimento. Configure `FIREBASE_CREDENTIALS_PATH` e `FIREBASE_DATABASE_URL` no `.env` e confirme que `FirebaseConfig.java` lê essas variáveis. O JSON da conta de serviço não está neste repositório.
 5. Configurar as credenciais Cloudinary para a funcionalidade de upload.
 
@@ -31,15 +31,15 @@ Essas dependências impedem tratar um clone novo como ambiente pronto. Combine c
 
 ## Configuração local com `.env`
 
-O arquivo de propriedades fica em `hipatec/src/main/resources/application.properties`. As credenciais devem ficar em um arquivo `.env` na raiz da pasta `hipatec/`, no mesmo nível de `build.gradle` e `gradlew.bat`. **Não versione o `.env` nem o JSON privado do Firebase.**
+O arquivo de propriedades fica em `hipatec/src/main/resources/application.properties`. As credenciais podem ficar em um arquivo `.env` na raiz da pasta `hipatec/`, no mesmo nível de `build.gradle` e `gradlew`. O Spring importa esse arquivo de forma opcional; **não versione o `.env` nem o JSON privado do Firebase**. Use `.env.example` como modelo.
 
 ### 1. Crie o arquivo `.env`
 
 Use este modelo e substitua os valores de exemplo pelos dados fornecidos pela equipe:
 
 ```dotenv
-# SQL Server / Azure SQL
-SPRING_DATASOURCE_URL=jdbc:sqlserver://SEU_SERVIDOR.database.windows.net:1433;databaseName=SEU_BANCO;encrypt=true;trustServerCertificate=false;hostNameInCertificate=*.database.windows.net;loginTimeout=30
+# PostgreSQL local ou branch de desenvolvimento do Neon
+SPRING_DATASOURCE_URL=jdbc:postgresql://HOST:5432/DATABASE?sslmode=require
 SPRING_DATASOURCE_USERNAME=SEU_USUARIO
 SPRING_DATASOURCE_PASSWORD=SUA_SENHA
 
@@ -72,19 +72,9 @@ ONESIGNAL_APP_ID=
 ONESIGNAL_API_KEY=
 ```
 
-A URL JDBC deve usar `databaseName` para identificar o banco. O usuário e a senha devem ser informados separadamente nas variáveis correspondentes. Não reutilize os valores de exemplo.
+A URL JDBC deve apontar para o PostgreSQL local ou para uma branch de desenvolvimento do Neon. O usuário e a senha devem ser informados separadamente nas variáveis correspondentes. Não reutilize os valores de exemplo.
 
-### 2. Ative a leitura do `.env`
-
-O Spring Boot **não carrega arquivos `.env` automaticamente**. Para usar esse arquivo, o projeto precisa ter a dependência `dotenv-java` no `build.gradle`:
-
-```groovy
-implementation 'io.github.cdimascio:dotenv-java:3.2.0'
-```
-
-Na classe principal da aplicação, carregue as variáveis antes de chamar `SpringApplication.run(...)`. O carregamento deve disponibilizar os valores como propriedades do sistema para que o Spring consiga resolver `${NOME_DA_VARIAVEL}`. Se essa alteração ainda não foi feita, o `.env` será ignorado e a aplicação poderá falhar ao iniciar.
-
-### 3. Confira `application.properties`
+### 2. Confira `application.properties`
 
 As configurações principais devem referenciar as variáveis, sem conter credenciais reais:
 
