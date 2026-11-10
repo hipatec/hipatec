@@ -74,6 +74,26 @@ ONESIGNAL_API_KEY=
 
 A URL JDBC deve apontar para o PostgreSQL local ou para uma branch de desenvolvimento do Neon. O usuário e a senha devem ser informados separadamente nas variáveis correspondentes. Não reutilize os valores de exemplo.
 
+### SMTP de produção sem domínio pago
+
+O Cloudflare Pages hospeda apenas o frontend; o envio continua sendo feito pelo backend no Railway. Para o MVP, é possível usar o plano gratuito do Brevo com um remetente Gmail/Outlook verificado, sem comprar um domínio. O plano possui limite de 300 envios por dia.
+
+No Brevo, crie e confirme o remetente e gere uma **SMTP key**. Depois, configure os valores diretamente no Railway (não os envie pelo chat):
+
+```dotenv
+HIPATEC_MAIL_PROVIDER=smtp
+SMTP_HOST=smtp-relay.brevo.com
+SMTP_PORT=587
+SMTP_USERNAME=SEU_LOGIN_SMTP_BREVO
+SMTP_PASSWORD=SUA_SMTP_KEY_BREVO
+SMTP_AUTH=true
+SMTP_STARTTLS=true
+HIPATEC_MAIL_FROM=REMETENTE_VERIFICADO
+HIPATEC_RESET_URL=https://hipatec.pages.dev/redefinir-senha
+```
+
+O código atual já usa `JavaMailSender` para SMTP; essa configuração não exige alteração no frontend nem no contrato de recuperação. A aceitação pelo SMTP não garante que a mensagem chegará à caixa de entrada, então o fluxo deve ser testado com uma conta autorizada da equipe.
+
 ### 2. Confira `application.properties`
 
 As configurações principais devem referenciar as variáveis, sem conter credenciais reais:
