@@ -19,9 +19,11 @@ import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 
 @Service
+@ConditionalOnProperty(name = "hipatec.posts.enabled", havingValue = "true", matchIfMissing = true)
 public class PostService {
 
     private final FirebaseDatabase database = FirebaseDatabase.getInstance();

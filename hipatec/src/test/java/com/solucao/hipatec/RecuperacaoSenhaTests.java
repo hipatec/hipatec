@@ -51,6 +51,8 @@ import org.springframework.web.server.ResponseStatusException;
         "spring.datasource.driver-class-name=org.h2.Driver",
         "spring.datasource.username=sa", "spring.datasource.password=",
         "spring.jpa.hibernate.ddl-auto=create-drop", "spring.jpa.show-sql=false",
+        "hipatec.firebase.enabled=false",
+        "hipatec.posts.enabled=false",
         "hipatec.recuperacao-senha.url=http://localhost:8100/redefinir-senha",
         "hipatec.mail.from=teste@hipatec.local",
         "logging.level.org.hibernate.SQL=OFF"
@@ -66,6 +68,11 @@ class RecuperacaoSenhaTests {
         @Bean
         JavaMailSender mail() {
             return mock(JavaMailSender.class);
+        }
+
+        @Bean
+        PostService posts() {
+            return mock(PostService.class);
         }
     }
 

@@ -28,18 +28,22 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.mail.javamail.JavaMailSender;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT, classes = SessaoTests.Config.class, properties = {
     "spring.config.location=optional:classpath:/application-sessao-test.properties",
     "spring.datasource.url=jdbc:h2:mem:sessao;DB_CLOSE_DELAY=-1",
-    "spring.datasource.driver-class-name=org.h2.Driver", "spring.jpa.hibernate.ddl-auto=create-drop"
+    "spring.datasource.driver-class-name=org.h2.Driver", "spring.jpa.hibernate.ddl-auto=create-drop",
+    "hipatec.firebase.enabled=false", "hipatec.posts.enabled=false",
+    "hipatec.recuperacao-senha.url=http://localhost:8100/redefinir-senha",
+    "hipatec.mail.from=teste@hipatec.local"
 })
 class SessaoTests {
   @TestConfiguration(proxyBeanMethods = false)
   @EnableAutoConfiguration
   @EntityScan("com.solucao.hipatec.model")
   // @EnableJpaRepositories("com.solucao.hipatec.repository")
-  @Import({ SecurityConfig.class, SessaoController.class, EstudanteController.class, MentoraController.class,
+  @Import({ SecurityConfig.class, CloudinaryConfig.class, SessaoController.class, EstudanteController.class, MentoraController.class,
       EstudanteService.class, MentoraService.class, PerfilController.class, PerfilService.class,
       PostController.class, MentoriaController.class, MentoriaService.class })
   static class Config {
@@ -61,6 +65,11 @@ class SessaoTests {
     @Bean
     PostService posts() {
       return mock(PostService.class);
+    }
+
+    @Bean
+    JavaMailSender mail() {
+      return mock(JavaMailSender.class);
     }
   }
 

@@ -8,6 +8,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Configuration;
 
 import com.google.auth.oauth2.GoogleCredentials;
@@ -17,6 +18,7 @@ import com.google.firebase.FirebaseOptions;
 import jakarta.annotation.PostConstruct;
 
 @Configuration
+@ConditionalOnProperty(name = "hipatec.firebase.enabled", havingValue = "true", matchIfMissing = true)
 public class FirebaseConfig {
 
     @Value("${FIREBASE_CREDENTIALS_JSON:}")
