@@ -86,11 +86,13 @@ public class RecuperacaoSenhaService {
         var mensagem = new SimpleMailMessage();
         mensagem.setFrom(remetente);
         mensagem.setTo(destinatario);
-        mensagem.setSubject("Hipatec — recuperação de senha");
-        mensagem.setText("Recebemos uma solicitação para redefinir sua senha na Hipatec.\n\n"
-                + "Abra este link, válido por 30 minutos e para um único uso:\n"
+        mensagem.setSubject("Hipatec | Recuperação de senha");
+        mensagem.setText("Olá,\n\n"
+                + "Recebemos uma solicitação para redefinir sua senha na Hipatec.\n\n"
+                + "Este link expira em 30 minutos e pode ser usado uma única vez:\n"
                 + resetUrl + "#token=" + token
-                + "\n\nSe você não solicitou a alteração, ignore este e-mail. Sua senha continua a mesma.");
+                + "\n\nSe você não solicitou essa alteração, ignore este e-mail. Sua senha continua a mesma.\n\n"
+                + "Equipe Hipatec\nProjeto iniciado em 2025.");
         // Uma falha no provedor desfaz a troca do token, preservando o link anterior.
         mail.send(mensagem, resetUrl + "#token=" + token);
     }
@@ -129,7 +131,7 @@ public class RecuperacaoSenhaService {
         var aviso = new SimpleMailMessage();
         aviso.setFrom(remetente);
         aviso.setTo(email);
-        aviso.setSubject("Hipatec — senha alterada");
+        aviso.setSubject("Hipatec | Senha alterada");
         aviso.setText("Sua senha da Hipatec foi alterada. Se não foi você, procure a equipe responsável pelo projeto.");
         
         try {

@@ -106,6 +106,13 @@ class EmailServiceTests {
         server.verify();
         verifyNoInteractions(smtp);
 
+        String html = ReflectionTestUtils.invokeMethod(service, "renderMailgunHtml",
+                mensagem(), "https://hipatec.example/redefinir-senha#token=teste");
+        assertTrue(html.contains("logo_hipatec_roxo.png"));
+        assertTrue(html.contains("Redefinir minha senha"));
+        assertTrue(html.contains("Projeto iniciado em 2025"));
+        assertFalse(html.contains("—"));
+
         server.reset();
         server.expect(requestTo("https://api.mailgun.net/v3/hipatec.app/messages"))
                 .andRespond(withSuccess("{}", MediaType.APPLICATION_JSON));

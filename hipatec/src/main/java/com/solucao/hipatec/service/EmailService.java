@@ -83,7 +83,7 @@ public class EmailService {
             return;
         }
         if ("mailgun".equals(provider)) {
-            sendMailgun(message);
+            sendMailgun(message, link);
             return;
         }
         String html = HtmlUtils.htmlEscape(message.getText(), "UTF-8").replace("\n", "<br>");
@@ -113,7 +113,7 @@ public class EmailService {
         }
     }
 
-    private void sendMailgun(SimpleMailMessage message) {
+    private void sendMailgun(SimpleMailMessage message, String link) {
         var form = new LinkedMultiValueMap<String, String>();
         form.add("from", message.getFrom());
         for (String recipient : message.getTo()) {
@@ -121,6 +121,7 @@ public class EmailService {
         }
         form.add("subject", message.getSubject());
         form.add("text", message.getText());
+        form.add("html", renderMailgunHtml(message, link));
         try {
             var response = client.post().uri("/messages")
                     .contentType(MediaType.APPLICATION_FORM_URLENCODED)
@@ -131,5 +132,37 @@ public class EmailService {
         } catch (RestClientException error) {
             throw new MailSendException("Falha ao enviar e-mail pelo Mailgun.");
         }
+    }
+
+    private String renderMailgunHtml(SimpleMailMessage message, String link) {
+        boolean recovery = link != null && !link.isBlank();
+        String title = recovery ? "Recupere o acesso à sua conta" : "Sua senha foi alterada";
+        String intro = recovery
+                ? "Recebemos uma solicitação para redefinir sua senha na Hipatec."
+                : "Sua senha da Hipatec foi alterada com sucesso.";
+        String escapedLink = recovery ? HtmlUtils.htmlEscape(link, "UTF-8") : "";
+        StringBuilder paragraphs = new StringBuilder();
+        for (String paragraph : message.getText().split("\\n\\s*\\n")) {
+            String escaped = HtmlUtils.htmlEscape(paragraph.trim(), "UTF-8").replace("\n", "<br>");
+            if (!escaped.isBlank() && (!recovery || !escaped.equals(escapedLink))) {
+                paragraphs.append("<p style=\"margin:0 0 16px;font-size:16px;line-height:26px;color:#3f3b46;\">")
+                        .append(escaped).append("</p>");
+            }
+        }
+        String action = recovery
+                ? "<table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" style=\"margin:24px auto 18px\"><tr><td bgcolor=\"#472b7a\" style=\"border-radius:8px\"><a href=\""
+                        + escapedLink
+                        + "\" style=\"display:inline-block;padding:14px 24px;color:#ffffff;text-decoration:none;font-weight:bold;font-size:16px\">Redefinir minha senha</a></td></tr></table>"
+                + "<p style=\"margin:0 0 16px;font-size:13px;line-height:20px;color:#6e6878;word-break:break-word\">Se o botão não abrir, copie e cole este endereço no navegador:<br><a href=\""
+                        + escapedLink + "\" style=\"color:#472b7a\">" + escapedLink + "</a></p>"
+                : "<p style=\"margin:0 0 16px;font-size:16px;line-height:26px;color:#3f3b46\">Se você não fez essa alteração, entre em contato com a equipe da Hipatec.</p>";
+        return "<!doctype html><html lang=\"pt-BR\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><style>body{margin:0}a{overflow-wrap:anywhere}@media(max-width:600px){.pad{padding:24px 20px!important}.logo{width:150px!important}h1{font-size:26px!important;line-height:34px!important}}</style></head>"
+                + "<body style=\"margin:0;background:#f7f5fb;color:#3f3b46;font-family:Arial,Helvetica,sans-serif\"><div style=\"display:none;max-height:0;overflow:hidden;mso-hide:all\">"
+                + HtmlUtils.htmlEscape(intro, "UTF-8")
+                + "</div><table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\"><tr><td align=\"center\" style=\"padding:24px 12px\"><table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" style=\"max-width:600px;background:#ffffff;border:1px solid #e8e2ef;border-radius:14px\"><tr><td class=\"pad\" style=\"padding:30px 32px 26px\"><p style=\"margin:0 0 28px;text-align:center\"><img class=\"logo\" src=\"https://hipatec.app/assets/logo_hipatec_roxo.png\" width=\"170\" alt=\"Hipatec\" style=\"display:inline-block;width:170px;height:auto\"></p><h1 style=\"margin:0 0 18px;color:#472b7a;font-size:30px;line-height:38px;text-align:center\">"
+                + title + "</h1><p style=\"margin:0 0 20px;font-size:16px;line-height:26px;color:#3f3b46\">"
+                + HtmlUtils.htmlEscape(intro, "UTF-8") + "</p>"
+                + paragraphs + action
+                + "<hr style=\"border:0;border-top:1px solid #e8e2ef;margin:28px 0 18px\"><p style=\"margin:0;color:#777080;font-size:13px;line-height:20px;text-align:center\">Equipe Hipatec<br>Projeto iniciado em 2025</p></td></tr></table></td></tr></table></body></html>";
     }
 }
