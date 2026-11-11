@@ -92,7 +92,7 @@ HIPATEC_MAIL_FROM=REMETENTE_VERIFICADO
 HIPATEC_RESET_URL=https://hipatec.pages.dev/redefinir-senha
 ```
 
-O código atual já usa `JavaMailSender` para SMTP; essa configuração não exige alteração no frontend nem no contrato de recuperação. A aceitação pelo SMTP não garante que a mensagem chegará à caixa de entrada, então o fluxo deve ser testado com uma conta autorizada da equipe.
+O código atual já usa `JavaMailSender` para SMTP e também aceita a API HTTP do Mailgun. Para Mailgun, use `HIPATEC_MAIL_PROVIDER=mailgun`, `MAILGUN_DOMAIN`, `MAILGUN_API_KEY` e `MAILGUN_BASE_URL`; a chave fica somente no Railway. A API HTTP evita depender da configuração SMTP do servidor e exige apenas o domínio de envio validado no Mailgun. Essa configuração não exige alteração no frontend nem no contrato de recuperação. A aceitação pelo provedor não garante que a mensagem chegará à caixa de entrada, então o fluxo deve ser testado com uma conta autorizada da equipe.
 
 ### 2. Confira `application.properties`
 

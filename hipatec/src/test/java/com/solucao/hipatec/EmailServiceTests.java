@@ -87,6 +87,32 @@ class EmailServiceTests {
     }
 
     @Test
+    void enviaPelaApiDoMailgunComoFormularioERejeitaRespostaSemId() {
+        var builder = RestClient.builder();
+        var service = new EmailService(smtp, builder, "mailgun", "", "",
+                "hipatec.app", "key-ficticia", "https://api.mailgun.net/v3");
+        var server = MockRestServiceServer.bindTo(builder).build();
+        ReflectionTestUtils.setField(service, "client", builder.build());
+
+        server.expect(requestTo("https://api.mailgun.net/v3/hipatec.app/messages"))
+                .andExpect(method(HttpMethod.POST))
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_FORM_URLENCODED))
+                .andExpect(content().string(org.hamcrest.Matchers.allOf(
+                        org.hamcrest.Matchers.containsString("from=teste%40hipatec.example"),
+                        org.hamcrest.Matchers.containsString("to=estudante%40example.test"),
+                        org.hamcrest.Matchers.containsString("subject=Hipatec"))))
+                .andRespond(withSuccess("{\"id\":\"queued\",\"message\":\"Queued\"}", MediaType.APPLICATION_JSON));
+        service.send(mensagem());
+        server.verify();
+        verifyNoInteractions(smtp);
+
+        server.reset();
+        server.expect(requestTo("https://api.mailgun.net/v3/hipatec.app/messages"))
+                .andRespond(withSuccess("{}", MediaType.APPLICATION_JSON));
+        assertThrows(MailSendException.class, () -> service.send(mensagem()));
+        server.verify();
+    }
+    @Test
     void exigeConfiguracaoExplicitaAntesDeEnviar() {
         assertThrows(IllegalArgumentException.class,
                 () -> new EmailService(smtp, RestClient.builder(), "invalido", "", ""));
