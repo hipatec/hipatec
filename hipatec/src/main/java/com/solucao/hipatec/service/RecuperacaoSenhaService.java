@@ -97,6 +97,17 @@ public class RecuperacaoSenhaService {
         mail.send(mensagem, resetUrl + "#token=" + token);
     }
 
+    @Transactional(readOnly = true)
+    public void validarToken(String token) {
+        if (token == null || !token.matches("[A-Za-z0-9_-]{43}")) {
+            throw linkInvalido();
+        }
+        var recuperacao = recuperacoes.findByTokenHash(hash(token)).orElseThrow(this::linkInvalido);
+        if (!recuperacao.getExpiraEm().isAfter(Instant.now())) {
+            throw linkInvalido();
+        }
+    }
+
     @Transactional
     public void redefinir(String token, String senha) {
         if (token == null || !token.matches("[A-Za-z0-9_-]{43}")) {

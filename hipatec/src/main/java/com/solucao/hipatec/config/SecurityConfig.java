@@ -99,6 +99,7 @@ public class SecurityConfig {
                                                                 HttpMethod.POST,
                                                                 "/auth/login",
                                                                 "/auth/recuperacao-senha",
+                                                                "/auth/validar-redefinicao",
                                                                 "/auth/redefinir-senha",
                                                                 "/estudantes",
                                                                 "/mentoras")

@@ -32,6 +32,9 @@ public class RecuperacaoSenhaController {
             @NotBlank @Pattern(regexp = "[A-Za-z0-9_-]{43}") String token,
             @NotBlank @Size(min = 8, max = 72) String senha) {}
 
+    public record ValidacaoToken(
+            @NotBlank @Pattern(regexp = "[A-Za-z0-9_-]{43}") String token) {}
+
     public RecuperacaoSenhaController(RecuperacaoSenhaService service) {
         this.service = service;
     }
@@ -53,6 +56,13 @@ public class RecuperacaoSenhaController {
         } catch (TaskRejectedException error) {
             throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "Tente novamente mais tarde.");
         }
+    }
+
+    @PostMapping("/validar-redefinicao")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void validar(@Valid @RequestBody ValidacaoToken dados, HttpServletRequest request) {
+        limitar("validar:" + request.getRemoteAddr(), 10);
+        service.validarToken(dados.token());
     }
 
     @PostMapping("/redefinir-senha")
