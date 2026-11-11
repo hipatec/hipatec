@@ -79,6 +79,12 @@ public class PostController {
         return ResponseEntity.ok().build();
     }
 
+    @GetMapping("/{id}/comments")
+    public ResponseEntity<List<Comentario>> listarComentarios(
+            @PathVariable String id) throws Exception {
+        return ResponseEntity.ok(service.listarComentarios(id));
+    }
+
     @PostMapping("/{id}/comment")
     public ResponseEntity<Void> comentar(
             @PathVariable String id,

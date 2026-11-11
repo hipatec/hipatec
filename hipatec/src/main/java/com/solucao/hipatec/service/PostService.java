@@ -139,6 +139,31 @@ public class PostService {
         ref.child(id).setValueAsync(comentario);
     }
 
+    public List<Comentario> listarComentarios(String postId) throws Exception {
+        DatabaseReference ref = database.getReference("comments").child(postId);
+        CompletableFuture<List<Comentario>> future = new CompletableFuture<>();
+        ref.addListenerForSingleValueEvent(new ValueEventListener() {
+            @Override
+            public void onDataChange(DataSnapshot snapshot) {
+                List<Comentario> comentarios = new ArrayList<>();
+                for (DataSnapshot child : snapshot.getChildren()) {
+                    Comentario comentario = child.getValue(Comentario.class);
+                    if (comentario != null) comentarios.add(comentario);
+                }
+                comentarios.sort(Comparator.comparing(
+                        Comentario::getDataCriacao,
+                        Comparator.nullsLast(Comparator.naturalOrder())));
+                future.complete(comentarios);
+            }
+
+            @Override
+            public void onCancelled(DatabaseError error) {
+                future.completeExceptionally(error.toException());
+            }
+        });
+        return future.get();
+    }
+
     public void repostar(
             String postId,
             Integer usuarioId) {
