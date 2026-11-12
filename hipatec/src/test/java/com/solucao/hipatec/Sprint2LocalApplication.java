@@ -2,13 +2,21 @@ package com.solucao.hipatec;
 
 import com.solucao.hipatec.model.*;
 import com.solucao.hipatec.repository.MentoraRepository;
+import com.solucao.hipatec.repository.PerfilRepository;
 import com.solucao.hipatec.service.*;
 import org.springframework.boot.SpringApplication;
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.when;
 
 /** Banco H2 descartável: sessão, cadastro e perfil reais; serviços externos simulados. */
 public class Sprint2LocalApplication {
-    public static void main(String[] args) {
+    public static void main(String[] args) throws Exception {
         var app = new SpringApplication(SessaoTests.Config.class);
         var context = app.run(
                 "--spring.config.location=optional:classpath:/application-sprint2-local.properties",
@@ -19,6 +27,24 @@ public class Sprint2LocalApplication {
                 "--server.servlet.session.cookie.same-site=lax",
                 "--server.servlet.session.cookie.secure=false",
                 "--server.servlet.session.timeout=30m");
+
+        var posts = context.getBean(PostService.class);
+        var postsLocais = new CopyOnWriteArrayList<Post>();
+        var perfis = context.getBean(PerfilRepository.class);
+        when(posts.listarTodos()).thenAnswer(invocation -> new ArrayList<>(postsLocais));
+        when(posts.listarPorAutor(anyInt())).thenAnswer(invocation -> postsLocais.stream()
+                .filter(post -> invocation.getArgument(0, Integer.class).equals(post.getAutorId()))
+                .toList());
+        when(posts.listarComentarios(any())).thenReturn(List.of());
+        doAnswer(invocation -> {
+            Post post = invocation.getArgument(0, Post.class);
+            post.setId("local-" + System.nanoTime());
+            post.setDataCriacao(System.currentTimeMillis());
+            postsLocais.add(0, post);
+            perfis.incrementarPublicacoes(post.getAutorId());
+            return null;
+        }).when(posts).criar(any(Post.class));
+
         for (String nome : new String[]{"aluna", "outra"}) {
             var conta = new Estudante();
             conta.setNome(nome); conta.setUsuario(nome); conta.setEmail(nome + "@example.test");

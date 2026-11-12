@@ -29,7 +29,6 @@ public class PerfilController {
         return service.salvar(perfil);
     }
 
-    @org.springframework.security.access.prepost.PreAuthorize("@acesso.proprio(#role, #id)")
     @GetMapping("/{role}/{id}")
     public PerfilDTO getPerfil(
             @PathVariable String role,

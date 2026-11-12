@@ -18,6 +18,12 @@ public interface PerfilRepository extends JpaRepository<Perfil, Integer> {
     @Query("SELECT p FROM Perfil p WHERE p.id_mentora = :id")
     Perfil buscarPorMentora(Integer id);
 
+    @Query("SELECT p FROM Perfil p WHERE lower(p.usuario) = lower(:usuario) AND p.id_estudante IS NOT NULL")
+    Perfil buscarEstudantePorUsuario(@Param("usuario") String usuario);
+
+    @Query("SELECT p FROM Perfil p WHERE lower(p.usuario) = lower(:usuario) AND p.id_mentora IS NOT NULL")
+    Perfil buscarMentoraPorUsuario(@Param("usuario") String usuario);
+
     @Modifying
     @Query("""
             UPDATE Perfil p

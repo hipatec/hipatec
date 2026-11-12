@@ -86,7 +86,7 @@ public class PostService {
     private PerfilRepository perfilRepository;
 
     @Transactional
-    public void criar(Post post) {
+    public void criar(Post post) throws Exception {
 
         DatabaseReference ref = database.getReference("posts");
 
@@ -99,7 +99,8 @@ public class PostService {
                 post.getAutorId());
 
         ref.child(id)
-                .setValueAsync(post);
+                .setValueAsync(post)
+                .get();
     }
 
     public void curtir(
