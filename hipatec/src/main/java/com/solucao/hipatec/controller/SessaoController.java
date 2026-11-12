@@ -34,7 +34,7 @@ public class SessaoController {
     }
 
     public record Login(@Pattern(regexp = "estudantes|mentoras") @NotNull String role,
-            @NotBlank @Email @Size(max = 254) String email, @NotBlank @Size(max = 72) String senha) {
+            @NotBlank @Size(max = 254) String email, @NotBlank @Size(max = 72) String senha) {
     }
 
     public record Conta(Integer id, String role) {

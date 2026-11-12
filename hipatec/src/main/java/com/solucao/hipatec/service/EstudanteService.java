@@ -44,11 +44,19 @@ public class EstudanteService {
     private EntityManager entityManager;
 
     @Transactional
-    public Integer login(String email, String senha) {
-        if (email == null || senha == null || senha.isBlank() || senha.getBytes(StandardCharsets.UTF_8).length > 72)
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "E-mail ou senha inválidos.");
-        var contas = repository.findByEmailIgnoreCase(email.trim());
-        if (contas.size() != 1) throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "E-mail ou senha inválidos.");
+    public Integer login(String identificador, String senha) {
+        if (identificador == null || senha == null || senha.isBlank() || senha.getBytes(StandardCharsets.UTF_8).length > 72)
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "E-mail, usuário ou senha inválidos.");
+        String valor = identificador.trim();
+        var contas = repository.findByEmailIgnoreCase(valor);
+        if (contas.isEmpty()) {
+            Perfil perfilUsuario = perfilRepository.buscarEstudantePorUsuario(valor);
+            if (perfilUsuario != null && perfilUsuario.getId_estudante() != null) {
+                Estudante conta = repository.findById(perfilUsuario.getId_estudante()).orElse(null);
+                contas = conta == null ? List.of() : List.of(conta);
+            }
+        }
+        if (contas.size() != 1) throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "E-mail, usuário ou senha inválidos.");
         if (contas.stream().anyMatch(conta -> conta.getSenha() != null && conta.getSenha().startsWith("{bcrypt}"))) {
             if (contas.size() != 1 || senha.getBytes(StandardCharsets.UTF_8).length > 72
                     || !passwordEncoder.matches(senha, contas.get(0).getSenha().substring(8))) {
@@ -72,7 +80,7 @@ public class EstudanteService {
                 String.class,
                 jakarta.persistence.ParameterMode.IN);
 
-        query.setParameter("email", email);
+        query.setParameter("email", contas.get(0).getEmail());
         query.setParameter("senha", senha);
 
         Object resultado = query.getSingleResult();

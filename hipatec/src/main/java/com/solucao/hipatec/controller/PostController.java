@@ -31,7 +31,7 @@ public class PostController {
 
     @PostMapping
     public ResponseEntity<Void> criar(
-            @RequestBody Post post) {
+            @RequestBody Post post) throws Exception {
 
         var perfil = acesso.perfil();
         post.setAutorId(perfil.getId());

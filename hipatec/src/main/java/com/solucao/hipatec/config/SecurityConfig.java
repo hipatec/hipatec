@@ -2,6 +2,7 @@
 package com.solucao.hipatec.config;
 
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.List;
 
 import jakarta.servlet.*;
@@ -33,12 +34,14 @@ public class SecurityConfig {
         }
 
         @Bean
-        CsrfTokenRepository csrfTokenRepository() {
+        CsrfTokenRepository csrfTokenRepository(
+                        @Value("${server.servlet.session.cookie.secure:true}") boolean secure,
+                        @Value("${server.servlet.session.cookie.same-site:None}") String sameSite) {
                 var repository = CookieCsrfTokenRepository.withHttpOnlyFalse();
 
                 repository.setCookieCustomizer(cookie -> cookie
-                                .sameSite("None")
-                                .secure(true)
+                                .sameSite(secure ? "None" : sameSite)
+                                .secure(secure)
                                 .path("/"));
 
                 return repository;
@@ -54,7 +57,10 @@ public class SecurityConfig {
 
                 var cors = new CorsConfiguration();
 
-                cors.setAllowedOrigins(List.of(origin));
+                cors.setAllowedOrigins(Arrays.stream(origin.split(","))
+                        .map(String::trim)
+                        .filter(value -> !value.isBlank())
+                        .toList());
                 cors.setAllowedMethods(List.of(
                                 "GET", "POST", "PUT", "DELETE", "OPTIONS"));
                 cors.setAllowedHeaders(List.of(
@@ -109,7 +115,9 @@ public class SecurityConfig {
                                                 .requestMatchers(
                                                                 "/auth/session",
                                                                 "/perfil/estudantes/*",
-                                                                "/perfil/mentoras/*")
+                                                                "/perfil/mentoras/*",
+                                                                "/perfil/*/seguindo",
+                                                                "/perfil/*/seguir")
                                                 .authenticated()
 
                                                 .requestMatchers(

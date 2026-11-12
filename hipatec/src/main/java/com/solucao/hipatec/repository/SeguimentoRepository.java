@@ -8,4 +8,5 @@ public interface SeguimentoRepository extends JpaRepository<Seguimento, Long> {
     List<Seguimento> findBySeguidorPerfilId(Integer perfilId);
     List<Seguimento> findBySeguidoPerfilId(Integer perfilId);
     boolean existsBySeguidorPerfilIdAndSeguidoPerfilId(Integer seguidorPerfilId, Integer seguidoPerfilId);
+    void deleteBySeguidorPerfilIdAndSeguidoPerfilId(Integer seguidorPerfilId, Integer seguidoPerfilId);
 }
