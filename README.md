@@ -570,9 +570,9 @@ Referências técnicas: [recuperação de senha — OWASP](https://cheatsheetser
 
 \- A mentoria possui título, descrição, progresso e ID de mentora; ainda não modela agenda, vagas, inscrições, histórico e gravação. O campo atual `progresso` pertence à mentoria e não representa conclusão individual de uma estudante.
 
-\- A criação de posts aguarda a confirmação da gravação no serviço usado pela execução. Comentários, curtidas e reposts ainda usam chamadas assíncronas; um HTTP de sucesso dessas operações não é evidência suficiente da persistência sem teste de integração.
+\- A criação de posts, comentários, curtidas e reposts aguarda a confirmação da transação no Firebase. O ambiente `sprint2Local` usa uma fixture volátil; somente os testes de integração com o emulador validam a persistência no RTDB local, sem comprovar a integração de produção.
 
-\- Não há implementação de denúncias e remoção administrativa nos controllers examinados.
+\- Há endpoints de denúncias; a remoção administrativa de conteúdo ainda precisa ser validada antes do piloto.
 
 
 
