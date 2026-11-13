@@ -31,7 +31,7 @@ Essas dependências impedem tratar um clone novo como ambiente pronto. Combine c
 
 ## Configuração local com `.env`
 
-O arquivo de propriedades fica em `hipatec/src/main/resources/application.properties`. As credenciais podem ficar em um arquivo `.env` na raiz da pasta `hipatec/`, no mesmo nível de `build.gradle` e `gradlew`. O Spring importa esse arquivo de forma opcional; **não versione o `.env` nem o JSON privado do Firebase**. Use `.env.example` como modelo.
+O arquivo de propriedades fica em `hipatec/src/main/resources/application.properties`. As credenciais podem ser fornecidas como variáveis de ambiente pelo terminal, pela configuração de execução da IDE ou pelo `envFile` do VS Code. O Spring não carrega um arquivo `.env` automaticamente. Use `.env.example` como modelo, mantenha o `.env` fora do Git e nunca versione o JSON privado do Firebase.
 
 ### 1. Crie o arquivo `.env`
 
@@ -178,12 +178,38 @@ No Windows, dentro da mesma subpasta:
 
 
 
-A API usa normalmente \<http://localhost:8080/>. `GET /` retorna `API funcionando!` quando a aplicação inicia. Esse retorno não verifica os procedimentos de login nem todos os serviços externos.
+A API usa normalmente <http://localhost:8080/>. `GET /` pode retornar `404` no ambiente `sprint2Local`, porque essa execução é voltada aos endpoints de sessão e perfil. O status HTTP confirma que o servidor está acessível, mas não valida login, feed ou integrações externas.
+
+### Ambiente local descartável para sessão, perfis e feed
+
+Para testar rapidamente pelo celular ou por outro dispositivo da rede, use a tarefa `sprint2Local` a partir da pasta que contém o Gradle Wrapper:
+
+```bash
+HIPATEC_FRONTEND_ORIGIN='http://localhost:4200,http://localhost:8100,http://100.81.159.20:4200' \\
+SERVER_ADDRESS=0.0.0.0 \\
+bash gradlew sprint2Local
+```
+
+Esse modo usa H2 em memória, cria as contas de demonstração `aluna`, `outra`, `mentora` e `pendente`, e não usa o Neon. Login, cadastro, sessão, perfis e seguimento usam o banco H2 durante a execução. Posts locais ficam disponíveis no feed e no perfil enquanto o processo permanece ligado; o banco e esses dados são descartados ao reiniciar.
+
+A execução `sprint2Local` simula serviços externos. Ela não é uma validação completa da persistência de Firebase, Cloudinary ou Mailgun em produção. Para executar a aplicação principal com variáveis externas, use `bootRun` ou a configuração `.vscode/launch.json` no VS Code:
+
+```json
+{
+  "type": "java",
+  "name": "Hipatec",
+  "request": "launch",
+  "mainClass": "com.solucao.hipatec.HipatecApplication",
+  "envFile": "${workspaceFolder}/.env",
+  "console": "integratedTerminal"
+}
+```
+
+O arquivo `.env` precisa existir localmente e conter valores válidos. O `launch.json` pode ser versionado; o `.env` e credenciais privadas não.
 
 
 
 ```bash
-
 bash gradlew test
 
 bash gradlew bootJar
@@ -227,6 +253,10 @@ Caminhos relativos à URL da API. Esta tabela descreve o código, não certifica
 | `GET /perfil/{role}/{id}` | Perfil, com `role` esperado como `estudantes` ou `mentoras` |
 
 | `PUT /perfil/{role}/{id}` | Edição por parâmetros `nome`, `usuario`, `biografia` e arquivos opcionais `pfp`, `background` |
+
+| `GET /perfil/{id}/seguindo` | Consulta se a sessão atual segue o perfil informado |
+
+| `POST /perfil/{id}/seguir`, `DELETE /perfil/{id}/seguir` | Seguir ou deixar de seguir um perfil |
 
 | `GET /mentorias`, `POST /mentorias` | Listagem e criação iniciais |
 
@@ -540,7 +570,7 @@ Referências técnicas: [recuperação de senha — OWASP](https://cheatsheetser
 
 \- A mentoria possui título, descrição, progresso e ID de mentora; ainda não modela agenda, vagas, inscrições, histórico e gravação. O campo atual `progresso` pertence à mentoria e não representa conclusão individual de uma estudante.
 
-\- Operações de escrita no Firebase usam chamadas assíncronas sem aguardar confirmação. Um HTTP de sucesso atual não é evidência suficiente da persistência; verifique também o armazenamento em testes de integração.
+\- A criação de posts aguarda a confirmação da gravação no serviço usado pela execução. Comentários, curtidas e reposts ainda usam chamadas assíncronas; um HTTP de sucesso dessas operações não é evidência suficiente da persistência sem teste de integração.
 
 \- Não há implementação de denúncias e remoção administrativa nos controllers examinados.
 
