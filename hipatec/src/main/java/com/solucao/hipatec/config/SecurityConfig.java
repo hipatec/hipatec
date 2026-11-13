@@ -97,6 +97,7 @@ public class SecurityConfig {
                                                                 "/auth/csrf",
                                                                 "/posts",
                                                                 "/posts/autor/*",
+                                                                "/posts/*/interacoes",
                                                                 "/perfil")
                                                 .permitAll()
 
@@ -122,14 +123,17 @@ public class SecurityConfig {
 
                                                 .requestMatchers(
                                                                 HttpMethod.GET,
-                                                                "/mentorias")
+                                                                "/mentorias", "/cursos")
                                                 .authenticated()
 
                                                 // Apenas mentoras podem criar mentorias
                                                 .requestMatchers(
                                                                 HttpMethod.POST,
-                                                                "/mentorias")
+                                                                "/mentorias", "/cursos")
                                                 .hasRole("MENTORA")
+
+                                                // Eventos são restritos a sessões válidas, inclusive os públicos.
+                                                .requestMatchers("/eventos", "/eventos/**").authenticated()
 
                                                 // Demais operações de publicações exigem login
                                                 .requestMatchers("/posts/**").authenticated()
@@ -169,10 +173,9 @@ public class SecurityConfig {
                                                         new SecurityContextLogoutHandler()
                                                                         .logout(request, response, auth);
 
-                                                        response.setStatus(
-                                                                        HttpServletResponse.SC_UNAUTHORIZED);
+                                                        // Prossegue anônimo: CORS/CSRF e endpoints públicos continuam
+                                                        // disponíveis; a autorização rejeita os recursos protegidos.
 
-                                                        return;
                                                 }
 
                                                 chain.doFilter(request, response);

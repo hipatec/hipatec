@@ -18,6 +18,7 @@ public class Comentario {
     private String autorFoto;
 
     private String texto;
+    private String requisicaoId;
 
     private Long dataCriacao;
 }

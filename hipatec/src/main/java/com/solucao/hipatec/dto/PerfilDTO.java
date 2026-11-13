@@ -21,5 +21,4 @@ public class PerfilDTO {
 
     // Usuário
     private String nome;
-    private String email;
 }

@@ -27,12 +27,14 @@ import lombok.RequiredArgsConstructor;
 public class PostController {
 
     private final PostService service;
+    private final com.solucao.hipatec.service.CloudinaryService imagens;
     private final com.solucao.hipatec.config.Acesso acesso;
 
-    @PostMapping
+    @PostMapping(consumes="application/json")
     public ResponseEntity<Void> criar(
             @RequestBody Post post) throws Exception {
 
+        post.setImagemUrl(null); post.setImagemHash(null);
         var perfil = acesso.perfil();
         post.setAutorId(perfil.getId());
         post.setAutorFoto(perfil.getPfp());
@@ -59,10 +61,18 @@ public class PostController {
                         autorId));
     }
 
+    @GetMapping("/{id}/interacoes")
+    public com.solucao.hipatec.dto.InteracoesDTO interacoes(@PathVariable String id) throws Exception {
+        var auth = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+        Integer perfilId = auth != null && auth.getPrincipal() instanceof com.solucao.hipatec.config.UsuarioSessao
+                ? acesso.perfil().getId() : null;
+        return service.interacoes(id, perfilId);
+    }
+
     @PostMapping("/{id}/like")
     public ResponseEntity<Void> curtir(
             @PathVariable String id,
-            @RequestParam Integer usuarioId) {
+            @RequestParam(required = false) Integer usuarioId) throws Exception {
 
         service.curtir(id, acesso.perfil().getId());
 
@@ -72,7 +82,7 @@ public class PostController {
     @DeleteMapping("/{id}/like")
     public ResponseEntity<Void> descurtir(
             @PathVariable String id,
-            @RequestParam Integer usuarioId) {
+            @RequestParam(required = false) Integer usuarioId) throws Exception {
 
         service.descurtir(id, acesso.perfil().getId());
 
@@ -88,8 +98,10 @@ public class PostController {
     @PostMapping("/{id}/comment")
     public ResponseEntity<Void> comentar(
             @PathVariable String id,
-            @RequestBody ComentarioDTO dto) {
+            @RequestBody ComentarioDTO dto) throws Exception {
 
+        if (dto.getTexto() == null || dto.getTexto().isBlank() || dto.getTexto().length() > 500)
+            throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.BAD_REQUEST, "Comentário deve ter entre 1 e 500 caracteres.");
         Comentario comentario = new Comentario();
 
         var perfil = acesso.perfil();
@@ -97,6 +109,7 @@ public class PostController {
         comentario.setAutorNome(perfil.getUsuario());
         comentario.setAutorFoto(perfil.getPfp());
         comentario.setTexto(dto.getTexto());
+        comentario.setRequisicaoId(dto.getRequisicaoId());
 
         service.comentar(id, comentario);
 
@@ -106,10 +119,42 @@ public class PostController {
     @PostMapping("/{id}/repost")
     public ResponseEntity<Void> repostar(
             @PathVariable String id,
-            @RequestParam Integer usuarioId) {
+            @RequestParam(required = false) Integer usuarioId) throws Exception {
 
         service.repostar(id, acesso.perfil().getId());
 
         return ResponseEntity.ok().build();
+    }
+
+    @PostMapping(consumes="multipart/form-data")
+    public ResponseEntity<Void> criarComImagem(@RequestParam String conteudo, @RequestParam String requisicaoId,
+            @RequestParam org.springframework.web.multipart.MultipartFile imagem) throws Exception {
+        var perfil=acesso.perfil();
+        if(conteudo.isBlank() || conteudo.length()>5000 || !requisicaoId.matches("[0-9a-f-]{36}"))
+            throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.BAD_REQUEST);
+        var post=new Post(); post.setConteudo(conteudo); post.setRequisicaoId(requisicaoId);
+        post.setAutorId(perfil.getId()); post.setAutorFoto(perfil.getPfp());
+        if(imagem.getSize()>5*1024*1024) throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.BAD_REQUEST);
+        post.setImagemHash(java.util.HexFormat.of().formatHex(java.security.MessageDigest.getInstance("SHA-256").digest(imagem.getBytes())));
+        try {
+            var anterior=service.recuperar(perfil.getId()+"-"+requisicaoId);
+            if(java.util.Objects.equals(anterior.getImagemHash(),post.getImagemHash()) && java.util.Objects.equals(anterior.getConteudo(),conteudo.strip())) return ResponseEntity.ok().build();
+            throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.CONFLICT);
+        } catch(org.springframework.web.server.ResponseStatusException e) { if(e.getStatusCode().value()!=404) throw e; }
+        post.setImagemUrl(imagens.uploadFile(imagem)); service.criar(post);
+        return ResponseEntity.ok().build();
+    }
+    @GetMapping("/republicados/{perfilId}")
+    public List<Post> republicados(@PathVariable Integer perfilId) throws Exception { return service.republicados(perfilId); }
+    @org.springframework.web.bind.annotation.PutMapping("/{id}")
+    public void editar(@PathVariable String id,@RequestBody Post entrada) throws Exception { service.editar(id,acesso.perfil().getId(),entrada.getConteudo(),entrada.getVersao()); }
+    @DeleteMapping("/{id}")
+    public void excluir(@PathVariable String id) throws Exception { service.excluir(id,acesso.perfil().getId()); }
+    @DeleteMapping("/{id}/repost")
+    public void removerRepost(@PathVariable String id) throws Exception { service.removerRepost(id,acesso.perfil().getId()); }
+    @PostMapping("/{id}/repost-comentario")
+    public void comentarRepost(@PathVariable String id,@RequestBody Post entrada) throws Exception {
+        var perfil=acesso.perfil(); entrada.setAutorId(perfil.getId()); entrada.setAutorFoto(perfil.getPfp());
+        service.comentarRepost(id,entrada);
     }
 }

@@ -12,6 +12,7 @@ public class ComentarioDTO {
     private String autorFoto;
 
     private String texto;
+    private String requisicaoId;
 
     private String postId;
     

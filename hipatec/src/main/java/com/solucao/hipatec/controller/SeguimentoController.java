@@ -36,7 +36,14 @@ public class SeguimentoController {
         validarDestino(atual, id);
         if (!seguimentos.existsBySeguidorPerfilIdAndSeguidoPerfilId(atual, id)) {
             Seguimento seguimento = new Seguimento(null, atual, id, LocalDateTime.now());
-            seguimentos.save(seguimento);
+            try {
+                // saveAndFlush possui sua própria transação: a colisão é tratada após rollback.
+                seguimentos.saveAndFlush(seguimento);
+            } catch (org.springframework.dao.DataIntegrityViolationException collision) {
+                if (!seguimentos.existsBySeguidorPerfilIdAndSeguidoPerfilId(atual, id)) {
+                    throw collision;
+                }
+            }
         }
         return Map.of("seguindo", true);
     }

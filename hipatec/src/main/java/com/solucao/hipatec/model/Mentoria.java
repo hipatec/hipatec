@@ -24,9 +24,14 @@ public class Mentoria {
 
     private String titulo;
 
+    @jakarta.persistence.Column(length=4000)
     private String descricao;
 
     private Integer progresso;
+
+    private String area;
+    private String formato;
+    private String requisicaoId;
 
     private Integer idMentora;
 

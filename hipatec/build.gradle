@@ -74,3 +74,20 @@ tasks.register('sprint2Local', JavaExec) {
     classpath = sourceSets.test.runtimeClasspath
     mainClass = 'com.solucao.hipatec.Sprint2LocalApplication'
 }
+
+// Ambiente isolado de eventos: exige caminho scratch explícito, nunca usa a configuração principal.
+tasks.register('eventosLocal', JavaExec) {
+    group = 'verification'
+    description = 'Prepara/serve/verifica eventos reais em H2 persistente de teste.'
+    dependsOn testClasses
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'com.solucao.hipatec.EventosLocalApplication'
+}
+
+// Provedores locais reais, configuração isolada e sem credenciais externas.
+tasks.register('integracaoRealLocal', JavaExec) {
+    group = 'verification'
+    dependsOn testClasses
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'com.solucao.hipatec.IntegracaoRealLocal'
+}

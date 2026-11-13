@@ -29,7 +29,7 @@ public class PerfilController {
         return service.salvar(perfil);
     }
 
-    @GetMapping("/{role}/{id}")
+    @GetMapping("/{role}/{id:\\d+}")
     public PerfilDTO getPerfil(
             @PathVariable String role,
             @PathVariable Integer id) {
@@ -51,6 +51,10 @@ public class PerfilController {
 
             @RequestParam String biografia,
 
+            @RequestParam(required = false) String email,
+
+            @RequestParam(required = false) String novaSenha,
+
             @RequestParam(required = false) MultipartFile pfp,
 
             @RequestParam(required = false) MultipartFile background
@@ -63,6 +67,8 @@ public class PerfilController {
                 nome,
                 usuario,
                 biografia,
+                email,
+                novaSenha,
                 pfp,
                 background);
     }
