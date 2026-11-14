@@ -124,7 +124,8 @@ class BrevoEmailServiceTests {
         assertTrue(html.contains("https://hipatec.app/assets/logo_hipatec_roxo.png"));
         assertTrue(html.contains("#472b7a"));
         assertTrue(html.contains("Redefinir minha senha"));
-        assertTrue(html.contains("Projeto iniciado em 2025"));
+        assertTrue(html.contains("© 2025–2026 Hipatec. Todos os direitos reservados."));
+        assertFalse(html.contains("Projeto iniciado em 2025"));
         assertFalse(html.contains("—"));
         assertMailgunParity(message, LINK, html);
         assertPrivate(output.getAll());

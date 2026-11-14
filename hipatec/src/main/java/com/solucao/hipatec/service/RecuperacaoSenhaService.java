@@ -92,7 +92,7 @@ public class RecuperacaoSenhaService {
                 + "Este link expira em 30 minutos e pode ser usado uma única vez:\n"
                 + resetUrl + "#token=" + token
                 + "\n\nSe você não solicitou essa alteração, ignore este e-mail. Sua senha continua a mesma.\n\n"
-                + "Equipe Hipatec\nProjeto iniciado em 2025.");
+                + "Equipe Hipatec\n© 2025–2026 Hipatec. Todos os direitos reservados.");
         // Uma falha no provedor desfaz a troca do token, preservando o link anterior.
         mail.send(mensagem, resetUrl + "#token=" + token);
     }

@@ -227,6 +227,6 @@ public class EmailService {
                 + title + "</h1><p style=\"margin:0 0 20px;font-size:16px;line-height:26px;color:#3f3b46\">"
                 + HtmlUtils.htmlEscape(intro, "UTF-8") + "</p>"
                 + paragraphs + action
-                + "<hr style=\"border:0;border-top:1px solid #e8e2ef;margin:28px 0 18px\"><p style=\"margin:0;color:#777080;font-size:13px;line-height:20px;text-align:center\">Equipe Hipatec<br>Projeto iniciado em 2025</p></td></tr></table></td></tr></table></body></html>";
+                + "<hr style=\"border:0;border-top:1px solid #e8e2ef;margin:28px 0 18px\"><p style=\"margin:0;color:#777080;font-size:13px;line-height:20px;text-align:center\">Equipe Hipatec<br>© 2025–2026 Hipatec. Todos os direitos reservados.</p></td></tr></table></td></tr></table></body></html>";
     }
 }
