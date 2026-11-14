@@ -1,6 +1,9 @@
 package com.solucao.hipatec.service;
 
+import jakarta.mail.internet.AddressException;
+import jakarta.mail.internet.InternetAddress;
 import java.net.http.HttpClient;
+import java.util.Arrays;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
@@ -26,7 +29,6 @@ public class EmailService {
     private final String appId;
     private final RestClient client;
 
-    @Autowired
     public EmailService(JavaMailSender smtp,
             @Value("${hipatec.mail.provider:smtp}") String provider,
             @Value("${hipatec.onesignal.app-id:}") String appId,
@@ -38,6 +40,20 @@ public class EmailService {
                 mailgunDomain, mailgunApiKey, mailgunBaseUrl);
     }
 
+    @Autowired
+    public EmailService(JavaMailSender smtp,
+            @Value("${hipatec.mail.provider:smtp}") String provider,
+            @Value("${hipatec.onesignal.app-id:}") String appId,
+            @Value("${hipatec.onesignal.api-key:}") String oneSignalApiKey,
+            @Value("${hipatec.mailgun.domain:}") String mailgunDomain,
+            @Value("${hipatec.mailgun.api-key:}") String mailgunApiKey,
+            @Value("${hipatec.mailgun.base-url:https://api.mailgun.net/v3}") String mailgunBaseUrl,
+            @Value("${hipatec.brevo.api-key:}") String brevoApiKey,
+            @Value("${hipatec.brevo.base-url:https://api.brevo.com/v3}") String brevoBaseUrl) {
+        this(smtp, RestClient.builder(), provider, appId, oneSignalApiKey,
+                mailgunDomain, mailgunApiKey, mailgunBaseUrl, brevoApiKey, brevoBaseUrl);
+    }
+
     public EmailService(JavaMailSender smtp, RestClient.Builder builder,
             String provider, String appId, String apiKey) {
         this(smtp, builder, provider, appId, apiKey, "", "", "https://api.mailgun.net/v3");
@@ -46,8 +62,16 @@ public class EmailService {
     public EmailService(JavaMailSender smtp, RestClient.Builder builder,
             String provider, String appId, String oneSignalApiKey,
             String mailgunDomain, String mailgunApiKey, String mailgunBaseUrl) {
-        Assert.isTrue(List.of("smtp", "onesignal", "mailgun").contains(provider),
-                "HIPATEC_MAIL_PROVIDER deve ser smtp, mailgun ou onesignal.");
+        this(smtp, builder, provider, appId, oneSignalApiKey, mailgunDomain, mailgunApiKey,
+                mailgunBaseUrl, "", "https://api.brevo.com/v3");
+    }
+
+    public EmailService(JavaMailSender smtp, RestClient.Builder builder,
+            String provider, String appId, String oneSignalApiKey,
+            String mailgunDomain, String mailgunApiKey, String mailgunBaseUrl,
+            String brevoApiKey, String brevoBaseUrl) {
+        Assert.isTrue(List.of("smtp", "onesignal", "mailgun", "brevo").contains(provider),
+                "HIPATEC_MAIL_PROVIDER deve ser smtp, mailgun, onesignal ou brevo.");
         this.smtp = smtp;
         this.provider = provider;
         this.appId = appId;
@@ -68,6 +92,10 @@ public class EmailService {
             this.client = http.baseUrl(mailgunBaseUrl + "/" + mailgunDomain)
                     .defaultHeaders(headers -> headers.setBasicAuth("api", mailgunApiKey))
                     .build();
+        } else if ("brevo".equals(provider)) {
+            Assert.hasText(brevoApiKey, "Configure BREVO_API_KEY.");
+            this.client = http.baseUrl(brevoBaseUrl)
+                    .defaultHeader("api-key", brevoApiKey).build();
         } else {
             this.client = null;
         }
@@ -80,6 +108,10 @@ public class EmailService {
     public void send(SimpleMailMessage message, String link) {
         if ("smtp".equals(provider)) {
             smtp.send(message);
+            return;
+        }
+        if ("brevo".equals(provider)) {
+            sendBrevo(message, link);
             return;
         }
         if ("mailgun".equals(provider)) {
@@ -113,6 +145,34 @@ public class EmailService {
         }
     }
 
+    private void sendBrevo(SimpleMailMessage message, String link) {
+        try {
+            // HIPATEC_MAIL_FROM aceita tanto endereço simples quanto Nome <endereço>.
+            var from = new InternetAddress(message.getFrom(), true);
+            from.validate();
+            var sender = Map.of("email", from.getAddress(), "name",
+                    from.getPersonal() == null ? "Hipatec" : from.getPersonal());
+            var body = Map.of(
+                    "sender", sender,
+                    "to", Arrays.stream(message.getTo()).map(email -> Map.of("email", email)).toList(),
+                    "subject", message.getSubject(),
+                    "htmlContent", renderHtml(message, link),
+                    "textContent", message.getText());
+            var response = client.post().uri("/smtp/email")
+                    .contentType(MediaType.APPLICATION_JSON).body(body)
+                    .retrieve().toEntity(Map.class);
+            var result = response.getBody();
+            // Aceite para processamento, não confirmação de entrega. Não repetir envio incerto.
+            if (response.getStatusCode().value() != 201 || result == null
+                    || !(result.get("messageId") instanceof String id) || id.isBlank()) {
+                throw new MailSendException("Brevo não aceitou o envio.");
+            }
+        } catch (RestClientException | AddressException error) {
+            // Não incluir causa/corpo remoto: podem conter chave, destinatário e link privado.
+            throw new MailSendException("Falha ao enviar e-mail pelo Brevo.");
+        }
+    }
+
     private void sendMailgun(SimpleMailMessage message, String link) {
         var form = new LinkedMultiValueMap<String, String>();
         form.add("from", message.getFrom());
@@ -135,6 +195,10 @@ public class EmailService {
     }
 
     private String renderMailgunHtml(SimpleMailMessage message, String link) {
+        return renderHtml(message, link);
+    }
+
+    private String renderHtml(SimpleMailMessage message, String link) {
         boolean recovery = link != null && !link.isBlank();
         String title = recovery ? "Recupere o acesso à sua conta" : "Sua senha foi alterada";
         String intro = recovery

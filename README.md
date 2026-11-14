@@ -94,6 +94,34 @@ HIPATEC_RESET_URL=https://hipatec.pages.dev/redefinir-senha
 
 O código atual já usa `JavaMailSender` para SMTP e também aceita a API HTTP do Mailgun. Para Mailgun, use `HIPATEC_MAIL_PROVIDER=mailgun`, `MAILGUN_DOMAIN`, `MAILGUN_API_KEY` e `MAILGUN_BASE_URL`; a chave fica somente no Railway. A API HTTP evita depender da configuração SMTP do servidor e exige apenas o domínio de envio validado no Mailgun. Essa configuração não exige alteração no frontend nem no contrato de recuperação. A aceitação pelo provedor não garante que a mensagem chegará à caixa de entrada, então o fluxo deve ser testado com uma conta autorizada da equipe.
 
+### Brevo HTTP API para recuperação de senha
+
+A opção escolhida para o backend é a API HTTP da Brevo, ativada **somente** com `HIPATEC_MAIL_PROVIDER=brevo`. O padrão continua `smtp`; Mailgun, SMTP e OneSignal permanecem disponíveis. Esta integração usa o HTML personalizado já utilizado pelo Mailgun (logo, cores, botão, link visível e rodapé), além do texto original. Inclui a notificação de senha alterada já existente, sem adicionar confirmação de cadastro ou marketing.
+
+O operador deve verificar o remetente e o domínio escolhido na Brevo antes da ativação. Configure no **runtime do backend no Railway**, nunca no frontend ou em arquivos versionados:
+
+```dotenv
+HIPATEC_MAIL_PROVIDER=brevo
+BREVO_API_KEY=INSERIR_SOMENTE_NO_RUNTIME_RAILWAY
+BREVO_BASE_URL=https://api.brevo.com/v3
+HIPATEC_MAIL_FROM=Hipatec <sender@verified-domain.invalid>
+HIPATEC_RESET_URL=https://frontend.invalid/redefinir-senha
+```
+
+Substitua os endereços `.invalid` pelos valores verificados. `HIPATEC_MAIL_FROM` também aceita endereço simples, usando `Hipatec` como nome. A chave é uma **API key**, diferente da SMTP key; não exige credenciais Mailgun, OneSignal ou SMTP. `BREVO_BASE_URL` é opcional e deve manter o endpoint oficial em operação; os testes usam exclusivamente um stub HTTP próprio em loopback.
+
+O [contrato oficial de envio](https://developers.brevo.com/reference/send-transac-email) usa `POST /smtp/email`, header `api-key` e JSON com `sender`, `to`, `subject`, `htmlContent` e `textContent`. O backend exige HTTP **201 e `messageId` não vazio** para considerar o pedido aceito pelo provedor. Aceite não comprova entrega. Há limites de 5 segundos para conexão e 10 segundos para resposta; falhas são sanitizadas, sem corpo remoto, chave, endereço ou token nas exceções. Não há retry nem troca automática de provedor: timeout pode representar envio aceito sem resposta recebida.
+
+O [plano Free anunciado pela Brevo](https://help.brevo.com/hc/en-us/articles/208580669-FAQs-What-are-the-limits-of-the-Free-plan) tem teto de 300 envios por dia. O operador deve confirmar no painel os limites efetivos, condições e eventuais mudanças de plano antes de ativar; esta integração não altera quotas da recuperação nem contrata upgrades. Tracking, aceite e entrega devem ser conferidos pelo operador no provedor. Para rollback, restaure o provider anterior e sua configuração de runtime. A verificação de domínio/DNS, publicação, configuração de chave e teste real de entrega ficam para a etapa operacional; os testes abaixo não realizam essas ações.
+
+Teste isolado com JDK 17, a partir de `hipatec/` (não definir `HIPATEC_TEST_SMTP_PORT`):
+
+```bash
+bash gradlew test --tests '*BrevoEmailServiceTests' --tests '*EmailServiceTests' --tests '*RecuperacaoSenhaTests'
+```
+
+Os testes Brevo criam e encerram seu próprio servidor em `127.0.0.1` e porta efêmera. Usam chave, destinatário e link sintéticos, sem contas, tokens de recuperação persistidos ou conexão à Brevo. Verificam JSON/header, rejeições, resposta inválida, timeout, ausência de dados privados nas exceções/logs, escape e paridade HTML/texto com Mailgun. A suíte existente de recuperação usa apenas H2 isolado e envio simulado.
+
 ### 2. Confira `application.properties`
 
 As configurações principais devem referenciar as variáveis, sem conter credenciais reais:
@@ -324,7 +352,7 @@ mailpit --listen 127.0.0.1:8025 --smtp 127.0.0.1:1025
 
 
 
-Abra \<http://127.0.0.1:8025/>. O backend já usa SMTP `localhost:1025` por padrão, sem autenticação ou TLS, adequado apenas a essa caixa local. Não configure relay/encaminhamento. O envio suporta SMTP (Mailgun ou Mailpit) e a API do OneSignal; o padrão local continua sendo Mailpit.
+Abra \<http://127.0.0.1:8025/>. O backend já usa SMTP `localhost:1025` por padrão, sem autenticação ou TLS, adequado apenas a essa caixa local. Não configure relay/encaminhamento. O envio suporta SMTP (Mailgun ou Mailpit) e as APIs HTTP de Brevo, Mailgun e OneSignal; o padrão local continua sendo Mailpit.
 
 
 
@@ -332,7 +360,7 @@ Abra \<http://127.0.0.1:8025/>. O backend já usa SMTP `localhost:1025` por padr
 
 | --- | --- |
 
-| `HIPATEC_MAIL_PROVIDER` | `smtp` local; `onesignal` para envio real |
+| `HIPATEC_MAIL_PROVIDER` | `smtp` local; `brevo`, `mailgun` ou `onesignal` por seleção explícita |
 
 | `ONESIGNAL_APP_ID`, `ONESIGNAL_API_KEY` | ID do app e App API Key, exigidos no modo `onesignal` |
 
